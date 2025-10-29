@@ -35,7 +35,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Carone\\Content\\ContentServiceProvider"
+                "Carone\\Content\\CaroneContentServiceProvider"
             ]
         }
     }

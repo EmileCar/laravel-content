@@ -23,7 +23,26 @@ class ContentEditor {
         document.addEventListener('input', (e) => {
             if (e.target.closest('.block-editor')) {
                 this.isDirty = true;
-                this.updateBlockData(e.target);
+                
+                // Handle field definition changes
+                if (e.target.classList.contains('field-definition')) {
+                    this.updateFieldDefinition(e.target);
+                } else {
+                    this.updateBlockData(e.target);
+                }
+            }
+        });
+
+        // Handle select changes for field definitions
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('field-definition')) {
+                this.isDirty = true;
+                this.updateFieldDefinition(e.target);
+                
+                // If field type changed, regenerate the field definition UI
+                if (e.target.getAttribute('data-def-field') === 'type') {
+                    this.regenerateFieldDefinition(e.target);
+                }
             }
         });
 
@@ -124,6 +143,8 @@ class ContentEditor {
                 return this.generateImageFields(block.data);
             case 'footer':
                 return this.generateFooterFields(block.data);
+            case 'custom_block':
+                return this.generateCustomFields(block.data);
             case 'custom':
                 return this.generateCustomFields(block.data);
             default:
@@ -272,13 +293,226 @@ class ContentEditor {
     }
 
     generateCustomFields(data) {
+        // Check if this is a structured custom block with _fields definition
+        if (data._fields && Array.isArray(data._fields)) {
+            return this.generateStructuredCustomFields(data);
+        }
+        
         return `
             <div class="field-group">
                 <label class="field-label">Custom JSON Data</label>
                 <textarea class="field-input field-textarea" data-field="_json" rows="10">${JSON.stringify(data, null, 2)}</textarea>
                 <small class="text-muted">Edit the JSON structure directly. Must be valid JSON.</small>
             </div>
+            <div class="field-group">
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="convertToStructuredBlock(this)">
+                    <i class="fas fa-magic"></i> Convert to Structured Block
+                </button>
+                <small class="text-muted d-block mt-1">Create a user-friendly form interface for this block</small>
+            </div>
         `;
+    }
+
+    generateStructuredCustomFields(data) {
+        const fields = data._fields || [];
+        let fieldsHtml = '';
+        let dataFieldsHtml = '';
+
+        // Generate field definition editor
+        fields.forEach((field, index) => {
+            fieldsHtml += `
+                <div class="custom-field-definition" data-field-index="${index}">
+                    <div class="card mb-2">
+                        <div class="card-header py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">Field ${index + 1}</small>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCustomField(this, ${index})">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="field-label">Field Key</label>
+                                    <input type="text" class="field-input field-definition" data-def-field="key" data-def-index="${index}" value="${field.key || ''}" placeholder="field_name">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="field-label">Field Type</label>
+                                    <select class="field-input field-definition" data-def-field="type" data-def-index="${index}">
+                                        <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text</option>
+                                        <option value="textarea" ${field.type === 'textarea' ? 'selected' : ''}>Textarea</option>
+                                        <option value="url" ${field.type === 'url' ? 'selected' : ''}>URL</option>
+                                        <option value="email" ${field.type === 'email' ? 'selected' : ''}>Email</option>
+                                        <option value="number" ${field.type === 'number' ? 'selected' : ''}>Number</option>
+                                        <option value="select" ${field.type === 'select' ? 'selected' : ''}>Select</option>
+                                        <option value="checkbox" ${field.type === 'checkbox' ? 'selected' : ''}>Checkbox</option>
+                                        <option value="group" ${field.type === 'group' ? 'selected' : ''}>Group</option>
+                                        <option value="array" ${field.type === 'array' ? 'selected' : ''}>Array</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="field-label">Label</label>
+                                    <input type="text" class="field-input field-definition" data-def-field="label" data-def-index="${index}" value="${field.label || ''}" placeholder="Field Label">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label class="field-label">Placeholder</label>
+                                    <input type="text" class="field-input field-definition" data-def-field="placeholder" data-def-index="${index}" value="${field.placeholder || ''}" placeholder="Placeholder text">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="field-label">Default Value</label>
+                                    <input type="text" class="field-input field-definition" data-def-field="default" data-def-index="${index}" value="${field.default || ''}" placeholder="Default value">
+                                </div>
+                            </div>
+                            ${field.type === 'select' ? `
+                                <div class="mt-2">
+                                    <label class="field-label">Options (one per line)</label>
+                                    <textarea class="field-input field-definition" data-def-field="options" data-def-index="${index}" rows="3" placeholder="option1&#10;option2&#10;option3">${(field.options || []).join('\n')}</textarea>
+                                </div>
+                            ` : ''}
+                            ${field.type === 'group' || field.type === 'array' ? `
+                                <div class="mt-2">
+                                    <label class="field-label">Sub-fields (JSON)</label>
+                                    <textarea class="field-input field-definition" data-def-field="subfields" data-def-index="${index}" rows="3" placeholder='[{"key": "title", "type": "text", "label": "Title"}]'>${JSON.stringify(field.subfields || [], null, 2)}</textarea>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Generate actual data input fields based on field definitions
+        fields.forEach((field) => {
+            if (field.key) {
+                dataFieldsHtml += this.generateCustomDataField(field, data[field.key]);
+            }
+        });
+
+        return `
+            <div class="custom-block-builder">
+                <div class="field-group">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="field-label mb-0">Field Definitions</label>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCustomField(this)">
+                            <i class="fas fa-plus"></i> Add Field
+                        </button>
+                    </div>
+                    <div class="custom-fields-definitions">
+                        ${fieldsHtml}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="field-group">
+                    <label class="field-label">Content Data</label>
+                    <div class="custom-data-fields">
+                        ${dataFieldsHtml}
+                    </div>
+                </div>
+                
+                <div class="field-group">
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="switchToJsonEditor(this)">
+                        <i class="fas fa-code"></i> Switch to JSON Editor
+                    </button>
+                </div>
+            </div>
+            ${this.generateBlockPreview(data)}
+        `;
+    }
+
+    generateCustomDataField(fieldDef, value = null) {
+        const fieldValue = value !== null ? value : (fieldDef.default || '');
+        
+        switch (fieldDef.type) {
+            case 'text':
+            case 'email':
+            case 'url':
+                return `
+                    <div class="field-group">
+                        <label class="field-label">${fieldDef.label || fieldDef.key}</label>
+                        <input type="${fieldDef.type}" class="field-input" data-field="${fieldDef.key}" value="${fieldValue}" placeholder="${fieldDef.placeholder || ''}">
+                    </div>
+                `;
+            
+            case 'number':
+                return `
+                    <div class="field-group">
+                        <label class="field-label">${fieldDef.label || fieldDef.key}</label>
+                        <input type="number" class="field-input" data-field="${fieldDef.key}" value="${fieldValue}" placeholder="${fieldDef.placeholder || ''}">
+                    </div>
+                `;
+            
+            case 'textarea':
+                return `
+                    <div class="field-group">
+                        <label class="field-label">${fieldDef.label || fieldDef.key}</label>
+                        <textarea class="field-input field-textarea" data-field="${fieldDef.key}" rows="4" placeholder="${fieldDef.placeholder || ''}">${fieldValue}</textarea>
+                    </div>
+                `;
+            
+            case 'select':
+                const options = fieldDef.options || [];
+                let optionsHtml = options.map(option => 
+                    `<option value="${option}" ${fieldValue === option ? 'selected' : ''}>${option}</option>`
+                ).join('');
+                
+                return `
+                    <div class="field-group">
+                        <label class="field-label">${fieldDef.label || fieldDef.key}</label>
+                        <select class="field-input" data-field="${fieldDef.key}">
+                            <option value="">Select ${fieldDef.label || fieldDef.key}</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                `;
+            
+            case 'checkbox':
+                return `
+                    <div class="field-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-field="${fieldDef.key}" ${fieldValue ? 'checked' : ''}>
+                            <label class="form-check-label">${fieldDef.label || fieldDef.key}</label>
+                        </div>
+                    </div>
+                `;
+            
+            case 'group':
+                return `
+                    <div class="field-group">
+                        <label class="field-label">${fieldDef.label || fieldDef.key}</label>
+                        <div class="custom-group-field border rounded p-3" data-field="${fieldDef.key}">
+                            <small class="text-muted">Group field - implement sub-fields rendering</small>
+                        </div>
+                    </div>
+                `;
+                
+            case 'array':
+                return `
+                    <div class="field-group">
+                        <label class="field-label">${fieldDef.label || fieldDef.key}</label>
+                        <div class="custom-array-field" data-field="${fieldDef.key}">
+                            <div class="array-items">
+                                <!-- Array items will be rendered here -->
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addArrayItem(this, '${fieldDef.key}')">
+                                <i class="fas fa-plus"></i> Add Item
+                            </button>
+                        </div>
+                    </div>
+                `;
+            
+            default:
+                return `
+                    <div class="field-group">
+                        <label class="field-label">${fieldDef.label || fieldDef.key}</label>
+                        <input type="text" class="field-input" data-field="${fieldDef.key}" value="${fieldValue}" placeholder="${fieldDef.placeholder || ''}">
+                    </div>
+                `;
+        }
     }
 
     generateBlockPreview(data) {
@@ -290,18 +524,163 @@ class ContentEditor {
         `;
     }
 
+    updateFieldDefinition(input) {
+        const blockElement = input.closest('.block-editor');
+        const blockId = blockElement.getAttribute('data-block-id');
+        const defField = input.getAttribute('data-def-field');
+        const defIndex = parseInt(input.getAttribute('data-def-index'));
+        
+        const block = this.blocks.find(b => b.id === blockId);
+        if (!block) return;
+
+        // Initialize _fields array if it doesn't exist
+        if (!block.data._fields) {
+            block.data._fields = [];
+        }
+
+        // Ensure field definition exists at this index
+        while (block.data._fields.length <= defIndex) {
+            block.data._fields.push({});
+        }
+
+        let value = input.value;
+        
+        // Handle special field types
+        if (defField === 'options') {
+            value = value.split('\n').filter(opt => opt.trim());
+        } else if (defField === 'subfields') {
+            try {
+                value = JSON.parse(value);
+            } catch (e) {
+                this.showValidationError(input, 'Invalid JSON for subfields');
+                return;
+            }
+        }
+
+        // Update field definition
+        block.data._fields[defIndex][defField] = value;
+
+        // If key changed, regenerate the data fields
+        if (defField === 'key' || defField === 'type' || defField === 'options' || defField === 'subfields') {
+            this.regenerateCustomDataFields(blockElement, block);
+        }
+
+        // Update preview
+        this.updateBlockPreview(blockElement, block);
+        this.clearValidationError(input);
+    }
+
+    regenerateCustomDataFields(blockElement, block) {
+        const dataFieldsContainer = blockElement.querySelector('.custom-data-fields');
+        if (!dataFieldsContainer) return;
+
+        let dataFieldsHtml = '';
+        const fields = block.data._fields || [];
+        
+        fields.forEach((field) => {
+            if (field.key) {
+                dataFieldsHtml += this.generateCustomDataField(field, block.data[field.key]);
+            }
+        });
+
+        dataFieldsContainer.innerHTML = dataFieldsHtml;
+    }
+
+    regenerateFieldDefinition(selectElement) {
+        const defIndex = parseInt(selectElement.getAttribute('data-def-index'));
+        const newType = selectElement.value;
+        const fieldDef = selectElement.closest('.custom-field-definition');
+        const cardBody = fieldDef.querySelector('.card-body');
+        
+        // Get current values
+        const currentKey = fieldDef.querySelector('[data-def-field="key"]').value;
+        const currentLabel = fieldDef.querySelector('[data-def-field="label"]').value;
+        const currentPlaceholder = fieldDef.querySelector('[data-def-field="placeholder"]').value;
+        const currentDefault = fieldDef.querySelector('[data-def-field="default"]').value;
+        
+        // Regenerate the card body content
+        cardBody.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="field-label">Field Key</label>
+                    <input type="text" class="field-input field-definition" data-def-field="key" data-def-index="${defIndex}" value="${currentKey}" placeholder="field_name">
+                </div>
+                <div class="col-md-4">
+                    <label class="field-label">Field Type</label>
+                    <select class="field-input field-definition" data-def-field="type" data-def-index="${defIndex}">
+                        <option value="text" ${newType === 'text' ? 'selected' : ''}>Text</option>
+                        <option value="textarea" ${newType === 'textarea' ? 'selected' : ''}>Textarea</option>
+                        <option value="url" ${newType === 'url' ? 'selected' : ''}>URL</option>
+                        <option value="email" ${newType === 'email' ? 'selected' : ''}>Email</option>
+                        <option value="number" ${newType === 'number' ? 'selected' : ''}>Number</option>
+                        <option value="select" ${newType === 'select' ? 'selected' : ''}>Select</option>
+                        <option value="checkbox" ${newType === 'checkbox' ? 'selected' : ''}>Checkbox</option>
+                        <option value="group" ${newType === 'group' ? 'selected' : ''}>Group</option>
+                        <option value="array" ${newType === 'array' ? 'selected' : ''}>Array</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="field-label">Label</label>
+                    <input type="text" class="field-input field-definition" data-def-field="label" data-def-index="${defIndex}" value="${currentLabel}" placeholder="Field Label">
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-6">
+                    <label class="field-label">Placeholder</label>
+                    <input type="text" class="field-input field-definition" data-def-field="placeholder" data-def-index="${defIndex}" value="${currentPlaceholder}" placeholder="Placeholder text">
+                </div>
+                <div class="col-md-6">
+                    <label class="field-label">Default Value</label>
+                    <input type="text" class="field-input field-definition" data-def-field="default" data-def-index="${defIndex}" value="${currentDefault}" placeholder="Default value">
+                </div>
+            </div>
+            ${newType === 'select' ? `
+                <div class="mt-2">
+                    <label class="field-label">Options (one per line)</label>
+                    <textarea class="field-input field-definition" data-def-field="options" data-def-index="${defIndex}" rows="3" placeholder="option1&#10;option2&#10;option3"></textarea>
+                </div>
+            ` : ''}
+            ${newType === 'group' || newType === 'array' ? `
+                <div class="mt-2">
+                    <label class="field-label">Sub-fields (JSON)</label>
+                    <textarea class="field-input field-definition" data-def-field="subfields" data-def-index="${defIndex}" rows="3" placeholder='[{"key": "title", "type": "text", "label": "Title"}]'></textarea>
+                </div>
+            ` : ''}
+        `;
+    }
+
+    updateBlockPreview(blockElement, block) {
+        const preview = blockElement.querySelector('.block-preview pre code');
+        if (preview) {
+            // Create clean data without _fields for preview
+            const cleanData = { ...block.data };
+            delete cleanData._fields;
+            preview.textContent = JSON.stringify(cleanData, null, 2);
+        }
+    }
+
     updateBlockData(input) {
         const blockElement = input.closest('.block-editor');
         const blockId = blockElement.getAttribute('data-block-id');
         const field = input.getAttribute('data-field');
-        const value = input.value;
+        let value = input.value;
 
         const block = this.blocks.find(b => b.id === blockId);
         if (!block) return;
 
+        // Handle checkbox inputs
+        if (input.type === 'checkbox') {
+            value = input.checked;
+        }
+
         if (field === '_json') {
             try {
-                block.data = JSON.parse(value);
+                const parsed = JSON.parse(value);
+                // Preserve _fields if they exist
+                if (block.data._fields) {
+                    parsed._fields = block.data._fields;
+                }
+                block.data = parsed;
             } catch (e) {
                 this.showValidationError(input, 'Invalid JSON format');
                 return;
@@ -311,11 +690,7 @@ class ContentEditor {
         }
 
         // Update preview
-        const preview = blockElement.querySelector('.block-preview pre code');
-        if (preview) {
-            preview.textContent = JSON.stringify(block.data, null, 2);
-        }
-
+        this.updateBlockPreview(blockElement, block);
         this.clearValidationError(input);
     }
 
@@ -367,6 +742,26 @@ class ContentEditor {
             footer: {
                 links: [],
                 copyright: '© 2025 Your Company'
+            },
+            custom_block: {
+                _fields: [
+                    {
+                        key: 'title',
+                        type: 'text',
+                        label: 'Title',
+                        placeholder: 'Enter title',
+                        default: ''
+                    },
+                    {
+                        key: 'content',
+                        type: 'textarea',
+                        label: 'Content',
+                        placeholder: 'Enter content',
+                        default: ''
+                    }
+                ],
+                title: 'Sample Title',
+                content: 'Sample content'
             },
             custom: {}
         };
@@ -610,6 +1005,155 @@ function addBlock(type) {
 
 function savePage() {
     window.contentEditor.savePage();
+}
+
+// Custom field management functions
+function addCustomField(button) {
+    const container = button.closest('.field-group').querySelector('.custom-fields-definitions');
+    const index = container.children.length;
+    
+    const fieldHtml = `
+        <div class="custom-field-definition" data-field-index="${index}">
+            <div class="card mb-2">
+                <div class="card-header py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Field ${index + 1}</small>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCustomField(this, ${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body py-2">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="field-label">Field Key</label>
+                            <input type="text" class="field-input field-definition" data-def-field="key" data-def-index="${index}" placeholder="field_name">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">Field Type</label>
+                            <select class="field-input field-definition" data-def-field="type" data-def-index="${index}">
+                                <option value="text">Text</option>
+                                <option value="textarea">Textarea</option>
+                                <option value="url">URL</option>
+                                <option value="email">Email</option>
+                                <option value="number">Number</option>
+                                <option value="select">Select</option>
+                                <option value="checkbox">Checkbox</option>
+                                <option value="group">Group</option>
+                                <option value="array">Array</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">Label</label>
+                            <input type="text" class="field-input field-definition" data-def-field="label" data-def-index="${index}" placeholder="Field Label">
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <label class="field-label">Placeholder</label>
+                            <input type="text" class="field-input field-definition" data-def-field="placeholder" data-def-index="${index}" placeholder="Placeholder text">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="field-label">Default Value</label>
+                            <input type="text" class="field-input field-definition" data-def-field="default" data-def-index="${index}" placeholder="Default value">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', fieldHtml);
+    window.contentEditor.isDirty = true;
+}
+
+function removeCustomField(button, index) {
+    const fieldDef = button.closest('.custom-field-definition');
+    
+    if (confirm('Remove this field definition? This will also remove its data.')) {
+        fieldDef.remove();
+        
+        // Update field indices and regenerate data fields
+        const blockElement = button.closest('.block-editor');
+        const blockId = blockElement.getAttribute('data-block-id');
+        const block = window.contentEditor.blocks.find(b => b.id === blockId);
+        
+        if (block && block.data._fields) {
+            block.data._fields.splice(index, 1);
+            window.contentEditor.regenerateCustomDataFields(blockElement, block);
+            window.contentEditor.updateBlockPreview(blockElement, block);
+        }
+        
+        window.contentEditor.isDirty = true;
+    }
+}
+
+function convertToStructuredBlock(button) {
+    const blockElement = button.closest('.block-editor');
+    const blockId = blockElement.getAttribute('data-block-id');
+    const block = window.contentEditor.blocks.find(b => b.id === blockId);
+    
+    if (!block) return;
+    
+    // Initialize with basic fields
+    block.data._fields = [
+        {
+            key: 'title',
+            type: 'text',
+            label: 'Title',
+            placeholder: 'Enter title',
+            default: ''
+        }
+    ];
+    
+    // Add title field if it doesn't exist
+    if (!block.data.title) {
+        block.data.title = '';
+    }
+    
+    // Regenerate the block content
+    const contentDiv = blockElement.querySelector('.block-content');
+    contentDiv.innerHTML = window.contentEditor.generateCustomFields(block.data);
+    
+    window.contentEditor.isDirty = true;
+}
+
+function switchToJsonEditor(button) {
+    const blockElement = button.closest('.block-editor');
+    const blockId = blockElement.getAttribute('data-block-id');
+    const block = window.contentEditor.blocks.find(b => b.id === blockId);
+    
+    if (!block) return;
+    
+    if (confirm('Switch to JSON editor? You will lose the structured field definitions.')) {
+        // Remove _fields from data
+        const cleanData = { ...block.data };
+        delete cleanData._fields;
+        block.data = cleanData;
+        
+        // Regenerate as simple JSON editor
+        const contentDiv = blockElement.querySelector('.block-content');
+        contentDiv.innerHTML = `
+            <div class="field-group">
+                <label class="field-label">Custom JSON Data</label>
+                <textarea class="field-input field-textarea" data-field="_json" rows="10">${JSON.stringify(cleanData, null, 2)}</textarea>
+                <small class="text-muted">Edit the JSON structure directly. Must be valid JSON.</small>
+            </div>
+            <div class="field-group">
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="convertToStructuredBlock(this)">
+                    <i class="fas fa-magic"></i> Convert to Structured Block
+                </button>
+                <small class="text-muted d-block mt-1">Create a user-friendly form interface for this block</small>
+            </div>
+        `;
+        
+        window.contentEditor.isDirty = true;
+    }
+}
+
+function addArrayItem(button, fieldKey) {
+    // TODO: Implement array item management
+    alert('Array field management will be implemented in the next iteration');
 }
 
 function initializeEditor(pageData, pageId, version) {

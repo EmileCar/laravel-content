@@ -69,8 +69,13 @@
                         <button class="btn btn-outline-primary btn-sm" onclick="addBlock('footer')">
                             <i class="fas fa-copyright"></i> Footer
                         </button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="addBlock('custom')">
-                            <i class="fas fa-plus"></i> Custom
+                        <hr>
+                        <small class="text-muted">Custom Blocks</small>
+                        <button class="btn btn-outline-success btn-sm" onclick="addBlock('custom_block')">
+                            <i class="fas fa-magic"></i> Custom Block
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="addBlock('custom')">
+                            <i class="fas fa-code"></i> Raw JSON
                         </button>
                     </div>
                 </div>

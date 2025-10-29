@@ -20,6 +20,31 @@ class PageContentController extends Controller
     ) {}
 
     /**
+     * Show the content management dashboard
+     */
+    public function dashboard()
+    {
+        return view('laravel-content::index');
+    }
+
+    /**
+     * Show the content editor for a specific page or new page
+     */
+    public function editor(string $identifier = null)
+    {
+        $page = null;
+        
+        if ($identifier) {
+            $page = PageContent::findByNameOrId($identifier);
+            if (!$page) {
+                abort(404, 'Page not found');
+            }
+        }
+
+        return view('laravel-content::editor', compact('page'));
+    }
+
+    /**
      * List pages with pagination and filtering
      */
     public function index(Request $request): JsonResponse

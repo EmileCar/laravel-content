@@ -4,7 +4,11 @@ use Illuminate\Support\Facades\Route;
 use Carone\Content\Http\Controllers\PageContentController;
 
 Route::group([], function () {
-    // Pages resource routes
+    // Dashboard and Editor routes (Web routes for the editor interface)
+    Route::get('/', [PageContentController::class, 'dashboard'])->name('content.dashboard');
+    Route::get('/editor/{page?}', [PageContentController::class, 'editor'])->name('content.editor');
+    
+    // Pages resource routes (API routes)
     Route::get('/pages', [PageContentController::class, 'index'])->name('content.pages.index');
     Route::post('/pages', [PageContentController::class, 'store'])->name('content.pages.store');
     Route::get('/pages/{page}', [PageContentController::class, 'show'])->name('content.pages.show');

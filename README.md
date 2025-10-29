@@ -12,6 +12,7 @@ A lightweight Content Management System package for Laravel that provides a flex
 - **Caching**: Request-level and Laravel cache integration for performance
 - **Import/Export**: Backup and restore functionality
 - **Blade Components**: Easy content display in your views
+- **Web-based Editor**: Rich visual editor for managing content without coding
 
 ## Installation
 
@@ -42,6 +43,39 @@ php artisan vendor:publish --provider="Carone\Content\ContentServiceProvider"
 ```bash
 php artisan migrate
 ```
+
+5. Publish the editor assets:
+
+```bash
+php artisan vendor:publish --provider="Carone\Content\CaroneContentServiceProvider" --tag="assets"
+```
+
+## Using the Web Editor
+
+The package includes a rich web-based editor for managing content:
+
+### Accessing the Editor
+
+- **Content Dashboard:** `/admin/content/` - Lists all pages
+- **Content Editor:** `/admin/content/editor/{page?}` - Edit or create pages
+
+### Editor Features
+
+- **Visual Block Editor:** Drag-and-drop interface for building pages
+- **Pre-built Block Types:** Hero, Text, Feature Grid, Image, Footer, and Custom blocks
+- **Real-time Preview:** See JSON structure as you build
+- **Version Control:** Track changes with automatic versioning
+- **Validation:** Real-time validation with helpful error messages
+
+### Quick Start with Editor
+
+1. Navigate to `/admin/content/` in your browser
+2. Click "Create New Page"
+3. Add blocks using the sidebar
+4. Fill in content fields
+5. Click "Save Changes"
+
+For detailed editor documentation, see [EDITOR-GUIDE.md](EDITOR-GUIDE.md).
 
 ## Configuration
 

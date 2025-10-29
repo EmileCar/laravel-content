@@ -38,6 +38,11 @@ class CaroneContentServiceProvider extends ServiceProvider
             __DIR__ . '/../resources/views' => resource_path('views/vendor/laravel-content'),
         ], 'views');
 
+        // Publish assets
+        $this->publishes([
+            __DIR__ . '/../resources/assets' => public_path('vendor/carone-content'),
+        ], 'assets');
+
         $this->registerRoutes();
         $this->registerBladeComponents();
     }

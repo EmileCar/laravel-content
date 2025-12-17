@@ -47,6 +47,24 @@ class PageContentModelTest extends TestCase
     }
 
     /** @test */
+    public function it_can_create_file_content()
+    {
+        $content = PageContent::create([
+            'page_id' => 'downloads',
+            'element_id' => 'user-manual',
+            'type' => 'file',
+            'value' => 'files/manual.pdf',
+        ]);
+
+        $this->assertDatabaseHas('page_contents', [
+            'page_id' => 'downloads',
+            'element_id' => 'user-manual',
+            'type' => 'file',
+            'value' => 'files/manual.pdf',
+        ]);
+    }
+
+    /** @test */
     public function it_can_update_content()
     {
         $content = PageContent::create([

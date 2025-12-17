@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('page_id');
             $table->string('element_id');
-            $table->enum('type', ['text', 'image']);
+            $table->enum('type', ['text', 'image', 'file']);
             $table->text('value')->nullable();
             $table->timestamps();
 

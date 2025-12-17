@@ -5,7 +5,7 @@ A lightweight, developer-friendly content management package for Laravel applica
 ## Features
 
 - 🚀 **Simple Integration** - Drop-in Blade components for editable content
-- 📝 **Text & Image Support** - Manage both text content and image paths
+- 📝 **Text, Image & File Support** - Manage text content, image paths, and file downloads
 - 🔒 **Authentication Aware** - Only show edit indicators to authenticated users
 - ⚡ **Performance Optimized** - Built-in caching support for fast content retrieval
 - 🎨 **Customizable** - Extensive configuration options
@@ -50,35 +50,51 @@ php artisan vendor:publish --provider="Carone\Content\CaroneContentServiceProvid
 
 ### Basic Text Content
 
-Use the `editable-p` component to create editable paragraphs:
+Use the `editable-text` component to create editable paragraphs:
 
 ```blade
-<x-editable-p element="about-me-text" />
+<x-editable-text element="about-me-text" />
 ```
 
 With custom classes and attributes:
 
 ```blade
-<x-editable-p element="hero-title" class="text-4xl font-bold text-gray-900" />
+<x-editable-text element="hero-title" class="text-4xl font-bold text-gray-900" />
 ```
 
 ### Image Content
 
-Use the `editable-img` component for editable images:
+Use the `editable-image` component for editable images:
 
 ```blade
-<x-editable-img element="company-logo" />
+<x-editable-image element="company-logo" />
 ```
 
 With custom attributes:
 
 ```blade
-<x-editable-img element="hero-banner" class="w-full h-64 object-cover" alt="Hero Banner" />
+<x-editable-image element="hero-banner" class="w-full h-64 object-cover" alt="Hero Banner" />
 ```
+
+### File Downloads
+
+Use the `editable-file` component for downloadable files:
+
+```blade
+<x-editable-file element="terms-and-conditions" />
+```
+
+With custom link text:
+
+```blade
+<x-editable-file element="user-manual" text="Download User Manual" class="btn btn-primary" />
+```
+
+By default, the component displays the filename as link text. Use the `text` attribute to customize it.
 
 ### How It Works
 
-1. **Define Content Areas** - Add `<x-editable-p>` or `<x-editable-img>` components in your views with unique element identifiers
+1. **Define Content Areas** - Add `<x-editable-text>`, `<x-editable-image>`, or `<x-editable-file>` components in your views with unique element identifiers
 2. **View Your Pages** - Content displays with default values when not yet defined
 3. **Edit Content** - Authenticated users see edit indicators (implementation of editor UI is up to you)
 4. **Store in Database** - Content is stored per page and element combination
@@ -128,12 +144,13 @@ Protect your content management routes with middleware:
 
 ### Default Values
 
-Set default text and images when content is not yet defined:
+Set default text, images, and files when content is not yet defined:
 
 ```php
 'defaults' => [
     'text' => env('CONTENT_DEFAULT_TEXT', '-- No content available --'),
     'image' => env('CONTENT_DEFAULT_IMAGE', 'images/placeholder.png'),
+    'file' => env('CONTENT_DEFAULT_FILE', 'files/placeholder.pdf'),
 ],
 ```
 
@@ -158,6 +175,7 @@ CONTENT_TABLE_NAME=page_contents
 CONTENT_ROUTE_PREFIX=admin/content
 CONTENT_DEFAULT_TEXT="Content coming soon..."
 CONTENT_DEFAULT_IMAGE=images/default.png
+CONTENT_DEFAULT_FILE=files/default.pdf
 CONTENT_CACHE_ENABLED=true
 CONTENT_CACHE_TTL=7200
 ```
@@ -171,12 +189,7 @@ The package creates a `page_contents` table with the following structure:
 | id | bigint | Primary key |
 | page_id | string | Route name or page identifier |
 | element_id | string | Unique element identifier |
-| type | enum | Content type ('text' or 'image') |
-| value | text | The actual content value |
-| created_at | timestamp | Creation timestamp |
-| updated_at | timestamp | Last update timestamp |
-
-**Unique constraint**: `(page_id, element_id)` ensures each element is unique per page.
+| type | enum | Content type ('text', 'image', or 'file') |
 
 ## API Routes
 
@@ -199,6 +212,7 @@ Perfect for:
 - ✅ Contact information that needs occasional updates
 - ✅ Feature descriptions and marketing copy
 - ✅ Footer content and legal text
+- ✅ Downloadable files (PDFs, documents, etc.)
 - ✅ Quick typo fixes without redeployment
 
 Not ideal for:
@@ -206,7 +220,7 @@ Not ideal for:
 - ❌ Complex content hierarchies
 - ❌ Multi-language content (no built-in i18n)
 - ❌ Rich text editing with formatting
-- ❌ File uploads (only stores paths)
+- ❌ Actual file uploads (only stores paths/URLs)
 - ❌ Content versioning and workflows
 
 ## Requirements

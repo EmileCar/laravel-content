@@ -4,11 +4,11 @@ namespace Carone\Content\Tests\Unit;
 
 use Carone\Content\Models\PageContent;
 use Carone\Content\Tests\TestCase;
-use Carone\Content\View\Components\EditableImg;
+use Carone\Content\View\Components\EditableImage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
-class EditableImgComponentTest extends TestCase
+class EditableImageComponentTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -33,7 +33,7 @@ class EditableImgComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableImg('logo');
+        $component = new EditableImage('logo');
         $view = $component->render();
 
         $this->assertEquals('images/logo.png', $view->getData()['value']);
@@ -45,7 +45,7 @@ class EditableImgComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableImg('non-existent-image');
+        $component = new EditableImage('non-existent-image');
         $view = $component->render();
 
         $this->assertEquals('images/default.png', $view->getData()['value']);
@@ -58,7 +58,7 @@ class EditableImgComponentTest extends TestCase
             ->andReturn('test.page');
 
         // Test unauthenticated (don't call actingAs with null)
-        $component = new EditableImg('test-image');
+        $component = new EditableImage('test-image');
         $view = $component->render();
 
         $this->assertFalse($view->getData()['authenticated']);
@@ -68,7 +68,7 @@ class EditableImgComponentTest extends TestCase
         $user->id = 1;
         $this->actingAs($user);
 
-        $component = new EditableImg('test-image');
+        $component = new EditableImage('test-image');
         $view = $component->render();
 
         $this->assertTrue($view->getData()['authenticated']);
@@ -80,7 +80,7 @@ class EditableImgComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableImg('hero-banner');
+        $component = new EditableImage('hero-banner');
         $view = $component->render();
 
         $this->assertEquals('hero-banner', $view->getData()['elementId']);
@@ -94,7 +94,7 @@ class EditableImgComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableImg('test-image');
+        $component = new EditableImage('test-image');
         $view = $component->render();
 
         $this->assertEquals('images/custom-default.jpg', $view->getData()['value']);
@@ -113,7 +113,7 @@ class EditableImgComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableImg('banner');
+        $component = new EditableImage('banner');
         $view = $component->render();
 
         $this->assertEquals('/storage/images/banner.jpg', $view->getData()['value']);
@@ -132,9 +132,10 @@ class EditableImgComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableImg('external-image');
+        $component = new EditableImage('external-image');
         $view = $component->render();
 
         $this->assertEquals('https://example.com/image.jpg', $view->getData()['value']);
     }
 }
+

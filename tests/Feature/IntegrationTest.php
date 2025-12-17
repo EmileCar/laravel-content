@@ -4,8 +4,9 @@ namespace Carone\Content\Tests\Feature;
 
 use Carone\Content\Models\PageContent;
 use Carone\Content\Tests\TestCase;
-use Carone\Content\View\Components\EditableImg;
-use Carone\Content\View\Components\EditableP;
+use Carone\Content\View\Components\EditableImage;
+use Carone\Content\View\Components\EditableText;
+use Carone\Content\View\Components\EditableFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
@@ -42,7 +43,7 @@ class IntegrationTest extends TestCase
             ->andReturn('home');
 
         // Retrieve through component
-        $component = new EditableP('welcome-text');
+        $component = new EditableText('welcome-text');
         $view = $component->render();
 
         $this->assertEquals('Welcome to our website!', $view->getData()['value']);
@@ -63,7 +64,7 @@ class IntegrationTest extends TestCase
             ->andReturn('about');
 
         // Retrieve through component
-        $component = new EditableImg('team-photo');
+        $component = new EditableImage('team-photo');
         $view = $component->render();
 
         $this->assertEquals('images/team.jpg', $view->getData()['value']);
@@ -93,18 +94,28 @@ class IntegrationTest extends TestCase
             'value' => 'images/logo.png',
         ]);
 
+        PageContent::create([
+            'page_id' => 'home',
+            'element_id' => 'brochure',
+            'type' => 'file',
+            'value' => 'files/brochure.pdf',
+        ]);
+
         Route::shouldReceive('currentRouteName')
             ->andReturn('home');
 
         // Test all components
-        $titleComponent = new EditableP('title');
+        $titleComponent = new EditableText('title');
         $this->assertEquals('Main Title', $titleComponent->render()->getData()['value']);
 
-        $subtitleComponent = new EditableP('subtitle');
+        $subtitleComponent = new EditableText('subtitle');
         $this->assertEquals('Subtitle Text', $subtitleComponent->render()->getData()['value']);
 
-        $logoComponent = new EditableImg('logo');
+        $logoComponent = new EditableImage('logo');
         $this->assertEquals('images/logo.png', $logoComponent->render()->getData()['value']);
+
+        $fileComponent = new EditableFile('brochure');
+        $this->assertEquals('files/brochure.pdf', $fileComponent->render()->getData()['value']);
     }
 
     /** @test */
@@ -121,7 +132,7 @@ class IntegrationTest extends TestCase
             ->andReturn('home');
 
         // Check original value
-        $component1 = new EditableP('dynamic-text');
+        $component1 = new EditableText('dynamic-text');
         $this->assertEquals('Original Text', $component1->render()->getData()['value']);
 
         // Update content
@@ -131,7 +142,7 @@ class IntegrationTest extends TestCase
         app()->forgetInstance('get_content');
 
         // Check updated value
-        $component2 = new EditableP('dynamic-text');
+        $component2 = new EditableText('dynamic-text');
         $view = $component2->render();
         
         // Note: This test may fail due to static caching in the helper
@@ -149,7 +160,7 @@ class IntegrationTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('home');
 
-        $component = new EditableP('test');
+        $component = new EditableText('test');
         $view = $component->render();
 
         $this->assertTrue($view->getData()['authenticated']);
@@ -162,7 +173,7 @@ class IntegrationTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('home');
 
-        $component = new EditableP('test');
+        $component = new EditableText('test');
         $view = $component->render();
 
         $this->assertFalse($view->getData()['authenticated']);
@@ -177,10 +188,11 @@ class IntegrationTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('new-page');
 
-        $textComponent = new EditableP('non-existent');
+        $textComponent = new EditableText('non-existent');
         $this->assertEquals('Default Text', $textComponent->render()->getData()['value']);
 
-        $imageComponent = new EditableImg('non-existent');
+        $imageComponent = new EditableImage('non-existent');
         $this->assertEquals('default.png', $imageComponent->render()->getData()['value']);
     }
 }
+

@@ -52,6 +52,7 @@ return [
     'defaults' => [
         'text' => env('CONTENT_DEFAULT_TEXT', '-- No content available --'),
         'image' => env('CONTENT_DEFAULT_IMAGE', 'images/placeholder.png'),
+        'file' => env('CONTENT_DEFAULT_FILE', 'files/placeholder.pdf'),
     ],
 
     /*
@@ -81,6 +82,7 @@ return [
     'content_types' => [
         'text',
         'image',
+        'file',
     ],
 
     /*

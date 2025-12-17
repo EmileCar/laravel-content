@@ -4,11 +4,11 @@ namespace Carone\Content\Tests\Unit;
 
 use Carone\Content\Models\PageContent;
 use Carone\Content\Tests\TestCase;
-use Carone\Content\View\Components\EditableP;
+use Carone\Content\View\Components\EditableText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 
-class EditablePComponentTest extends TestCase
+class EditableTextComponentTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -33,7 +33,7 @@ class EditablePComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableP('test-element');
+        $component = new EditableText('test-element');
         $view = $component->render();
 
         $this->assertInstanceOf(\Illuminate\Contracts\View\View::class, $view);
@@ -46,7 +46,7 @@ class EditablePComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableP('non-existent-element');
+        $component = new EditableText('non-existent-element');
         $view = $component->render();
 
         $this->assertEquals('Default Text', $view->getData()['value']);
@@ -59,7 +59,7 @@ class EditablePComponentTest extends TestCase
             ->andReturn('test.page');
 
         // Test unauthenticated (don't call actingAs with null)
-        $component = new EditableP('test-element');
+        $component = new EditableText('test-element');
         $view = $component->render();
 
         $this->assertFalse($view->getData()['authenticated']);
@@ -69,7 +69,7 @@ class EditablePComponentTest extends TestCase
         $user->id = 1;
         $this->actingAs($user);
 
-        $component = new EditableP('test-element');
+        $component = new EditableText('test-element');
         $view = $component->render();
 
         $this->assertTrue($view->getData()['authenticated']);
@@ -81,7 +81,7 @@ class EditablePComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableP('my-element');
+        $component = new EditableText('my-element');
         $view = $component->render();
 
         $this->assertEquals('my-element', $view->getData()['elementId']);
@@ -95,7 +95,7 @@ class EditablePComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableP('test-element');
+        $component = new EditableText('test-element');
         $view = $component->render();
 
         $this->assertEquals('Custom Default', $view->getData()['value']);
@@ -116,9 +116,10 @@ class EditablePComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        $component = new EditableP('multiline');
+        $component = new EditableText('multiline');
         $view = $component->render();
 
         $this->assertEquals($multilineText, $view->getData()['value']);
     }
 }
+

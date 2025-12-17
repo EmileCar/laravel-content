@@ -41,11 +41,15 @@ class ServiceProviderTest extends TestCase
     public function it_loads_views()
     {
         $this->assertTrue(
-            view()->exists('laravel-content::components.editable-p')
+            view()->exists('laravel-content::components.editable-text')
         );
 
         $this->assertTrue(
-            view()->exists('laravel-content::components.editable-img')
+            view()->exists('laravel-content::components.editable-image')
+        );
+
+        $this->assertTrue(
+            view()->exists('laravel-content::components.editable-file')
         );
     }
 
@@ -85,6 +89,7 @@ class ServiceProviderTest extends TestCase
 
         $this->assertArrayHasKey('text', $defaults);
         $this->assertArrayHasKey('image', $defaults);
+        $this->assertArrayHasKey('file', $defaults);
     }
 
     /** @test */
@@ -95,5 +100,6 @@ class ServiceProviderTest extends TestCase
         $this->assertIsArray($types);
         $this->assertContains('text', $types);
         $this->assertContains('image', $types);
+        $this->assertContains('file', $types);
     }
 }

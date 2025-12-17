@@ -5,7 +5,7 @@ namespace Carone\Content\View\Components;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
-class EditableImg extends Component
+class EditableFile extends Component
 {
     public string $element;
     public $attributes;
@@ -21,9 +21,9 @@ class EditableImg extends Component
         $elementId = $this->element;
         $contents = get_content();
         $authenticated = auth()->check();
-        $default = config('content.defaults.image', 'images/placeholder.png');
+        $default = config('content.defaults.file', 'files/placeholder.pdf');
         $value = $contents->get($elementId) ?? $default;
 
-        return view('laravel-content::components.editable-img', compact('value', 'elementId', 'authenticated'));
+        return view('laravel-content::components.editable-file', compact('value', 'elementId', 'authenticated'));
     }
 }

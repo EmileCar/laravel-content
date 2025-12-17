@@ -62,8 +62,9 @@ class CaroneContentServiceProvider extends ServiceProvider
     protected function registerBladeComponents()
     {
         $this->loadViewComponentsAs('editable', [
-            \Carone\Content\View\Components\EditableP::class,
-            \Carone\Content\View\Components\EditableImg::class,
+            \Carone\Content\View\Components\EditableText::class,
+            \Carone\Content\View\Components\EditableImage::class,
+            \Carone\Content\View\Components\EditableFile::class,
         ]);
     }
 }

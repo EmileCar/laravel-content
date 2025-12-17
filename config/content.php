@@ -3,6 +3,17 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Database Table Name
+    |--------------------------------------------------------------------------
+    |
+    | The name of the database table used to store page content.
+    | You can customize this if you need a different table name.
+    |
+    */
+    'table_name' => env('CONTENT_TABLE_NAME', 'page_contents'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Route Prefix
     |--------------------------------------------------------------------------
     |
@@ -22,11 +33,25 @@ return [
     | authorized users can manage content.
     |
     | Example: ['auth', 'can:manage-content']
+    | Set to empty array to disable middleware protection (not recommended)
     |
     */
     'middleware' => [
+        'web',
         'auth',
-        'can:manage-content',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Values
+    |--------------------------------------------------------------------------
+    |
+    | Default values shown when content is not yet defined
+    |
+    */
+    'defaults' => [
+        'text' => env('CONTENT_DEFAULT_TEXT', '-- No content available --'),
+        'image' => env('CONTENT_DEFAULT_IMAGE', 'images/placeholder.png'),
     ],
 
     /*
@@ -34,38 +59,42 @@ return [
     | Cache Settings
     |--------------------------------------------------------------------------
     |
-    | Settings for caching page content to improve performance
+    | Settings for caching page content to improve performance.
+    | When enabled, content will be cached for faster retrieval.
     |
     */
     'cache' => [
         'enabled' => env('CONTENT_CACHE_ENABLED', true),
-        'ttl' => env('CONTENT_CACHE_TTL', 3600), // 1 hour
-        'key_prefix' => 'laravel_content_',
+        'ttl' => env('CONTENT_CACHE_TTL', 3600), // Time to live in seconds (1 hour)
+        'key_prefix' => env('CONTENT_CACHE_PREFIX', 'laravel_content_'),
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | JSON Schema Validation
+    | Content Types
     |--------------------------------------------------------------------------
     |
-    | Settings for JSON schema validation
+    | Allowed content types that can be stored in the database.
+    | You can extend this array if you need additional content types.
     |
     */
-    'validation' => [
-        'strict' => env('CONTENT_VALIDATION_STRICT', true),
-        'schemas_path' => __DIR__ . '/../schemas',
+    'content_types' => [
+        'text',
+        'image',
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Pagination Settings
+    | Editor Visibility
     |--------------------------------------------------------------------------
     |
-    | Default pagination settings for listing pages
+    | Controls when editable components display edit indicators.
+    | Set to 'always' to show for all authenticated users,
+    | or specify a gate/ability to check for specific permissions.
     |
     */
-    'pagination' => [
-        'per_page' => 15,
-        'max_per_page' => 100,
+    'editor_visibility' => [
+        'enabled' => env('CONTENT_EDITOR_ENABLED', true),
+        'gate' => env('CONTENT_EDITOR_GATE', null), // e.g., 'manage-content'
     ],
 ];

@@ -1,311 +1,242 @@
-# Laravel Content CMS Package
+# Laravel Content Manager
 
-A lightweight Content Management System package for Laravel that provides a flexible way to manage page content through JSON structures.
+A lightweight, developer-friendly content management package for Laravel applications. This is **not a full-fledged CMS**, but rather a simple solution for managing editable text and images directly in your views, perfect for quick content updates and typo fixes without deploying new code.
 
 ## Features
 
-- **Flexible Content Structure**: Store content as JSON with customizable blocks
-- **Multi-language Support**: Built-in locale support for internationalization
-- **Version Control**: Optimistic concurrency control to prevent conflicts
-- **JSON Schema Validation**: Validate content structure against predefined schemas
-- **REST API**: Complete CRUD operations via API endpoints
-- **Caching**: Request-level and Laravel cache integration for performance
-- **Import/Export**: Backup and restore functionality
-- **Blade Components**: Easy content display in your views
-- **Web-based Editor**: Rich visual editor for managing content without coding
+- 🚀 **Simple Integration** - Drop-in Blade components for editable content
+- 📝 **Text & Image Support** - Manage both text content and image paths
+- 🔒 **Authentication Aware** - Only show edit indicators to authenticated users
+- ⚡ **Performance Optimized** - Built-in caching support for fast content retrieval
+- 🎨 **Customizable** - Extensive configuration options
+- 🔧 **Developer-Friendly** - Minimal setup, maximum flexibility
 
 ## Installation
 
-1. Add the package to your Laravel project's `composer.json`:
-
-```json
-{
-    "require": {
-        "carone/laravel-content": "*"
-    }
-}
-```
-
-2. Install the package:
+Install the package via Composer:
 
 ```bash
-composer install
+composer require carone/laravel-content
 ```
 
-3. Publish the configuration and migrations:
+### Publish Configuration
+
+Publish the configuration file to customize the package settings:
 
 ```bash
-php artisan vendor:publish --provider="Carone\Content\ContentServiceProvider"
+php artisan vendor:publish --provider="Carone\Content\CaroneContentServiceProvider" --tag="config"
 ```
 
-4. Run the migrations:
+This creates a `config/content.php` file where you can configure routes, middleware, caching, and default values.
+
+### Run Migrations
+
+Publish and run the migrations to create the `page_contents` table:
 
 ```bash
+php artisan vendor:publish --provider="Carone\Content\CaroneContentServiceProvider" --tag="migrations"
 php artisan migrate
 ```
 
-5. Publish the editor assets:
+### Publish Views (Optional)
+
+If you need to customize the component views:
 
 ```bash
-php artisan vendor:publish --provider="Carone\Content\CaroneContentServiceProvider" --tag="assets"
-```
-
-## Using the Web Editor
-
-The package includes a rich web-based editor for managing content:
-
-### Accessing the Editor
-
-- **Content Dashboard:** `/admin/content/` - Lists all pages
-- **Content Editor:** `/admin/content/editor/{page?}` - Edit or create pages
-
-### Editor Features
-
-- **Visual Block Editor:** Drag-and-drop interface for building pages
-- **Pre-built Block Types:** Hero, Text, Feature Grid, Image, Footer, and Custom blocks
-- **Real-time Preview:** See JSON structure as you build
-- **Version Control:** Track changes with automatic versioning
-- **Validation:** Real-time validation with helpful error messages
-
-### Quick Start with Editor
-
-1. Navigate to `/admin/content/` in your browser
-2. Click "Create New Page"
-3. Add blocks using the sidebar
-4. Fill in content fields
-5. Click "Save Changes"
-
-For detailed editor documentation, see [EDITOR-GUIDE.md](EDITOR-GUIDE.md).
-
-## Configuration
-
-The package publishes a configuration file to `config/content.php`. Key settings include:
-
-```php
-return [
-    // Route prefix for API endpoints
-    'route_prefix' => 'admin/content',
-    
-    // Middleware for authorization
-    'middleware' => ['auth', 'can:manage-content'],
-    
-    // Cache settings
-    'cache' => [
-        'enabled' => true,
-        'ttl' => 3600,
-    ],
-    
-    // Pagination settings
-    'pagination' => [
-        'per_page' => 15,
-        'max_per_page' => 100,
-    ],
-];
+php artisan vendor:publish --provider="Carone\Content\CaroneContentServiceProvider" --tag="views"
 ```
 
 ## Usage
 
-### API Endpoints
+### Basic Text Content
 
-The package provides REST API endpoints under the configured prefix (default: `/admin/content`):
+Use the `editable-p` component to create editable paragraphs:
 
-- `GET /pages` - List pages with pagination and filtering
-- `POST /pages` - Create a new page
-- `GET /pages/{id|name}` - Get a specific page
-- `PUT/PATCH /pages/{id|name}` - Update a page
-- `DELETE /pages/{id|name}` - Delete a page (soft delete)
-- `GET /pages/export` - Export pages for backup
-- `POST /pages/import` - Import pages from backup
+```blade
+<x-editable-p element="about-me-text" />
+```
 
-### Creating Content
+With custom classes and attributes:
+
+```blade
+<x-editable-p element="hero-title" class="text-4xl font-bold text-gray-900" />
+```
+
+### Image Content
+
+Use the `editable-img` component for editable images:
+
+```blade
+<x-editable-img element="company-logo" />
+```
+
+With custom attributes:
+
+```blade
+<x-editable-img element="hero-banner" class="w-full h-64 object-cover" alt="Hero Banner" />
+```
+
+### How It Works
+
+1. **Define Content Areas** - Add `<x-editable-p>` or `<x-editable-img>` components in your views with unique element identifiers
+2. **View Your Pages** - Content displays with default values when not yet defined
+3. **Edit Content** - Authenticated users see edit indicators (implementation of editor UI is up to you)
+4. **Store in Database** - Content is stored per page and element combination
+
+### Content Retrieval
+
+The package provides a `get_content()` helper function that retrieves all content for the current route:
 
 ```php
-POST /admin/content/pages
-{
-    "name": "home",
-    "display_name": "Home Page",
-    "type": "page",
-    "locale": "en",
-    "value": {
-        "version": 1,
-        "title": "Welcome Home",
-        "blocks": [
-            {
-                "id": "hero",
-                "type": "hero",
-                "data": {
-                    "heading": "Welcome to Our Site",
-                    "subheading": "We make great things happen",
-                    "cta": {
-                        "text": "Get Started",
-                        "url": "/start"
-                    }
-                }
-            }
-        ]
-    }
-}
+$content = get_content();
+$value = $content->get('about-me-text');
 ```
 
-### Displaying Content in Views
+Content is automatically cached based on your configuration settings for optimal performance.
 
-Use the `<x-page-content>` Blade component to display content:
+## Configuration
 
-```html
-<!-- Display a simple value -->
-<h1><x-page-content page="home" block="hero" key="heading" /></h1>
+The `config/content.php` file provides extensive customization options:
 
-<!-- Display nested values using dot notation -->
-<a href="#"><x-page-content page="home" block="hero" key="cta.url" /></a>
+### Table Name
 
-<!-- With default value -->
-<p><x-page-content page="home" block="hero" key="description" default="No description available" /></p>
-
-<!-- For specific locale -->
-<h1><x-page-content page="home" block="hero" key="heading" locale="fr" /></h1>
-```
-
-### JSON Structure
-
-#### Page Schema
-```json
-{
-    "version": 1,
-    "title": "Page Title",
-    "locale": "en",
-    "blocks": [
-        {
-            "id": "unique-block-id",
-            "type": "block-type",
-            "data": {
-                // Any custom data structure
-            }
-        }
-    ]
-}
-```
-
-#### Example Content
-```json
-{
-    "version": 1,
-    "title": "Home",
-    "locale": "en",
-    "blocks": [
-        {
-            "id": "hero",
-            "type": "hero",
-            "data": {
-                "heading": "Welcome to MySite",
-                "subheading": "We make web development fun again",
-                "background_image": "media://hero-bg.jpg",
-                "cta": {
-                    "text": "Get Started",
-                    "url": "/get-started"
-                }
-            }
-        },
-        {
-            "id": "features",
-            "type": "feature_grid",
-            "data": {
-                "heading": "Why choose us?",
-                "features": [
-                    {
-                        "icon": "fa-bolt",
-                        "title": "Fast",
-                        "description": "Lightning-fast load times."
-                    }
-                ]
-            }
-        }
-    ]
-}
-```
-
-### Programmatic Access
-
-You can access content programmatically using the `ContentService`:
+Customize the database table name:
 
 ```php
-use Carone\Content\Services\ContentService;
-
-$contentService = app(ContentService::class);
-
-// Get a page
-$page = $contentService->getPageByName('home', 'en');
-
-// Get specific block value
-$heading = $contentService->getBlockValue('home', 'hero', 'heading', 'en');
-
-// Get nested value
-$ctaText = $contentService->getBlockValue('home', 'hero', 'cta.text', 'en');
+'table_name' => env('CONTENT_TABLE_NAME', 'page_contents'),
 ```
 
-## Authorization
+### Route Configuration
 
-Configure authorization in your `config/content.php`:
+Configure the admin routes prefix:
 
 ```php
-'middleware' => ['auth', 'can:manage-content'],
+'route_prefix' => env('CONTENT_ROUTE_PREFIX', 'admin/content'),
 ```
 
-You'll need to define the `manage-content` ability in your application:
+### Middleware Protection
+
+Protect your content management routes with middleware:
 
 ```php
-// In AuthServiceProvider
-Gate::define('manage-content', function ($user) {
-    return $user->hasRole('admin');
-});
+'middleware' => [
+    'web',
+    'auth',
+    // Add custom middleware like 'can:manage-content'
+],
 ```
 
-## Validation
+### Default Values
 
-The package uses JSON Schema validation to ensure content structure integrity. The schemas are located in the `schemas/` directory:
+Set default text and images when content is not yet defined:
 
-- `page.json` - Validates complete page structure
-- `block.json` - Validates individual block structure
-
-## Caching
-
-The package implements two levels of caching:
-
-1. **Request-level caching**: Ensures only one database query per request per page
-2. **Laravel cache**: Configurable TTL-based caching for better performance
-
-Cache is automatically cleared when content is updated.
-
-## Import/Export
-
-### Export
-```bash
-GET /admin/content/pages/export?type=page&locale=en
+```php
+'defaults' => [
+    'text' => env('CONTENT_DEFAULT_TEXT', '-- No content available --'),
+    'image' => env('CONTENT_DEFAULT_IMAGE', 'images/placeholder.png'),
+],
 ```
 
-### Import
-```bash
-POST /admin/content/pages/import
-{
-    "pages": [
-        // Array of page objects
-    ]
-}
+### Caching
+
+Enable or disable caching and configure cache duration:
+
+```php
+'cache' => [
+    'enabled' => env('CONTENT_CACHE_ENABLED', true),
+    'ttl' => env('CONTENT_CACHE_TTL', 3600), // 1 hour
+    'key_prefix' => env('CONTENT_CACHE_PREFIX', 'laravel_content_'),
+],
 ```
 
-## Model Structure
+### Environment Variables
 
-The `page_contents` table includes:
+You can set these in your `.env` file:
 
-- `id` - Primary key
-- `name` - Unique identifier for lookup
-- `display_name` - Human-readable title
-- `value` - JSON content
-- `type` - Content type (page, fragment, block, landing)
-- `locale` - Language/locale code
-- `version` - Version number for optimistic concurrency
-- `created_at`, `updated_at` - Timestamps
-- `deleted_at` - Soft delete timestamp
+```env
+CONTENT_TABLE_NAME=page_contents
+CONTENT_ROUTE_PREFIX=admin/content
+CONTENT_DEFAULT_TEXT="Content coming soon..."
+CONTENT_DEFAULT_IMAGE=images/default.png
+CONTENT_CACHE_ENABLED=true
+CONTENT_CACHE_TTL=7200
+```
+
+## Database Structure
+
+The package creates a `page_contents` table with the following structure:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | bigint | Primary key |
+| page_id | string | Route name or page identifier |
+| element_id | string | Unique element identifier |
+| type | enum | Content type ('text' or 'image') |
+| value | text | The actual content value |
+| created_at | timestamp | Creation timestamp |
+| updated_at | timestamp | Last update timestamp |
+
+**Unique constraint**: `(page_id, element_id)` ensures each element is unique per page.
+
+## API Routes
+
+The package registers the following routes (under your configured prefix):
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET | `/pages` | List all pages with content |
+| POST | `/pages` | Create/update page content |
+| GET | `/pages/{page}` | Show specific page content |
+| PUT/PATCH | `/pages/{page}` | Update page content |
+| DELETE | `/pages/{page}` | Delete page content |
+
+## Use Cases
+
+Perfect for:
+
+- ✅ Landing pages with editable hero sections
+- ✅ About pages with team member bios and photos
+- ✅ Contact information that needs occasional updates
+- ✅ Feature descriptions and marketing copy
+- ✅ Footer content and legal text
+- ✅ Quick typo fixes without redeployment
+
+Not ideal for:
+
+- ❌ Complex content hierarchies
+- ❌ Multi-language content (no built-in i18n)
+- ❌ Rich text editing with formatting
+- ❌ File uploads (only stores paths)
+- ❌ Content versioning and workflows
+
+## Requirements
+
+- PHP 8.2 or higher
+- Laravel 12.0 or higher
+
+## Security
+
+The package is designed to work with Laravel's built-in authentication. The editable indicators only show to authenticated users via `auth()->check()`. 
+
+**Important**: Ensure you protect your content management routes with appropriate middleware to prevent unauthorized access.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This package is open-sourced software licensed under the MIT license.
+This package is open-sourced software licensed under the [MIT license](LICENSE).
+
+## Author
+
+**Caron Emile**  
+Email: emile.caron@constructiv.be
+
+## Support
+
+For issues, questions, or suggestions, please open an issue on GitHub.
+
+---
+
+**Note**: This package provides the foundation for content management but does not include an admin UI for editing content. You'll need to implement your own editor interface or integrate with your existing admin panel.

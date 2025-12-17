@@ -9,18 +9,14 @@ return new class extends Migration
     public function up()
     {
         Schema::create('page_contents', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->string('name')->unique(); // used to look up pages
-            $table->string('display_name'); // human-readable-title
-            $table->json('value')->nullable(); // stored JSON content
-            $table->string('type')->default('page'); // optional: page, fragment, block, landing
-            $table->string('locale', 10)->nullable(); // en, en_US etc. optional for i18n
-            $table->unsignedBigInteger('version')->default(1);
+            $table->id();
+            $table->string('page_id');
+            $table->string('element_id');
+            $table->enum('type', ['text', 'image']);
+            $table->text('value')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
-            $table->index(['type', 'locale']);
-            $table->index('name');
+            $table->unique(['page_id', 'element_id']);
         });
     }
 

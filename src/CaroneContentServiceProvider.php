@@ -15,9 +15,6 @@ class CaroneContentServiceProvider extends ServiceProvider
             __DIR__ . '/../config/content.php',
             'content'
         );
-
-        $this->app->singleton(ContentService::class);
-        $this->app->singleton(JsonSchemaValidator::class);
     }
 
     public function boot()
@@ -64,8 +61,9 @@ class CaroneContentServiceProvider extends ServiceProvider
 
     protected function registerBladeComponents()
     {
-        $this->loadViewComponentsAs('', [
-            \Carone\Content\View\Components\PageContent::class,
+        $this->loadViewComponentsAs('editable', [
+            \Carone\Content\View\Components\EditableP::class,
+            \Carone\Content\View\Components\EditableImg::class,
         ]);
     }
 }

@@ -109,12 +109,27 @@ https://yoursite.com/admin/content
 
 ### Editor Features
 
-- **📋 Page List** - View all pages with content in a clean sidebar
+- **📋 Page List** - View all pages with accurate content counts in the sidebar
 - **✏️ Inline Editing** - Edit content values directly with instant save
-- **➕ Add Content** - Add new content elements with helpful reminders
-- **🗑️ Delete Content** - Remove unwanted content items
+- **➕ Add Content** - Add new content with dynamic component code snippets
+- **📋 Copy to Clipboard** - Copy component code with one click
+- **🗑️ Delete Content** - Remove individual content items
+- **🗑️ Delete Pages** - Remove entire pages with all their content
 - **🔍 Route Explorer** - Discover and quick-add content for any application route
 - **💾 Auto-save** - Changes are saved immediately with visual feedback
+
+### Dynamic Component Snippets
+
+When adding new content, the editor shows you the exact Blade component code to add to your view, updated in real-time based on your inputs:
+
+- Updates automatically as you type the element ID
+- Changes when you select a different content type
+- One-click copy to clipboard
+- Example: `<x-editable-text element="hero-title" />`
+
+### Delete Pages
+
+Each page view includes a "Delete Page" button that removes the entire page and all its content items. This feature is also available when page loading fails, allowing you to clean up corrupt or invalid page entries.
 
 ### Route Explorer
 
@@ -135,7 +150,8 @@ The editor uses the following API endpoints (all under `/api/admin/content` by d
 
 - `GET /page/{pageId}` - Fetch content for a specific page
 - `POST /content` - Create or update content
-- `DELETE /content/{id}` - Delete content
+- `DELETE /content/{id}` - Delete a content item
+- `DELETE /page/{pageId}` - Delete an entire page with all content
 - `GET /routes` - Get all application routes
 
 These routes automatically include the `api` middleware and can be further protected via your config.

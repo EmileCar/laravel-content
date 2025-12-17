@@ -23,6 +23,10 @@
             border-bottom: 1px solid #e2e8f0;
             padding: 1rem 2rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            justify-content: space-between;
         }
 
         .header h1 {
@@ -182,11 +186,12 @@
         }
 
         .content-type-badge {
-            padding: 0.25rem 0.75rem;
+            padding: 0.25rem 0.5rem;
             border-radius: 0.25rem;
             font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
+            margin-left: 0.5rem;
         }
 
         .content-type-badge.text {
@@ -244,6 +249,11 @@
             display: flex;
             gap: 0.5rem;
             margin-top: 1rem;
+        }
+
+        button, input {
+            font-family: inherit;
+            font-size: inherit;
         }
 
         .btn {
@@ -551,7 +561,13 @@
 </head>
 <body>
     <div class="header">
-        <h1>📝 Content Editor</h1>
+        <h1 style="display: flex; align-items: center; gap: 1rem;">
+            <img src="https://emilecaron.be/assets/LOGO_CARONE_main.png" alt="Carone Logo" style="height: 46px; vertical-align: middle;">
+            <a href="https://github.com/EmileCar/laravel-content" target="_blank" style="text-decoration: none; color: #007bed; font-weight: bold; font-size: 1.2rem;transition: text-decoration 0.2s;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Content Editor</a>
+        </h1>
+        <a href="{{ config('app.url') }}" target="_blank" style="text-decoration: none; color: #3182ce; font-weight: 500; font-style: italic; transition: text-decoration 0.2s;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+            {{ config('app.name', 'Visit app ->') }}
+        </a>
     </div>
 
     <div class="container">
@@ -561,9 +577,9 @@
             </div>
             <ul class="page-list" id="pageList">
                 @forelse($pages as $page)
-                    <li class="page-item" data-page="{{ $page }}" onclick="loadPage('{{ $page }}')">
-                        <span class="page-name">{{ $page }}</span>
-                        <span class="content-count" id="count-{{ Str::slug($page) }}">0</span>
+                    <li class="page-item" data-page="{{ $page['page_id'] }}" onclick="loadPage('{{ $page['page_id'] }}')">
+                        <span class="page-name">{{ $page['page_id'] }}</span>
+                        <span class="content-count" id="count-{{ Str::slug($page['page_id']) }}">{{ $page['count'] }}</span>
                     </li>
                 @empty
                     <li style="padding: 2rem 1.25rem; text-align: center; color: #718096;">
@@ -597,12 +613,17 @@
                 <h3 id="modalTitle">Add Content</h3>
             </div>
             <div class="modal-body">
-                <div class="alert alert-info" id="codeReminderAlert" style="display: none;">
-                    <strong>⚠️ Code Update Required</strong><br>
-                    After adding new content, remember to add the corresponding component to your view:
-                    <code style="display: block; margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 0.25rem;">
-                        &lt;x-editable-[type] element="[element-id]" /&gt;
-                    </code>
+                <div class="alert alert-info" id="codeReminderAlert">
+                    <strong>💡 Component Code</strong><br>
+                    Add this component to your view:
+                    <div style="position: relative; margin-top: 0.5rem;">
+                        <code id="componentCodeSnippet" style="display: block; padding: 0.75rem; padding-right: 3rem; background: white; border-radius: 0.25rem; font-family: 'Courier New', monospace; font-size: 0.875rem; color: #2d3748; border: 1px solid #e2e8f0;">
+                            &lt;x-editable-text element="hero-title" /&gt;
+                        </code>
+                        <button type="button" onclick="copyComponentCode()" style="position: absolute; top: 0.5rem; right: 0.5rem; background: #3182ce; color: white; border: none; padding: 0.375rem 0.75rem; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer; transition: background 0.2s;" id="copyCodeBtn">
+                            Copy
+                        </button>
+                    </div>
                 </div>
 
                 <form id="contentForm">
@@ -611,12 +632,12 @@
 
                     <div class="form-group">
                         <label for="elementId">Element ID *</label>
-                        <input type="text" class="form-control" id="elementId" name="element_id" required placeholder="e.g., hero-title">
+                        <input type="text" class="form-control" id="elementId" name="element_id" required placeholder="e.g., hero-title" oninput="updateComponentSnippet()">
                     </div>
 
                     <div class="form-group">
                         <label for="contentType">Content Type *</label>
-                        <select class="form-control" id="contentType" name="type" required>
+                        <select class="form-control" id="contentType" name="type" required onchange="updateComponentSnippet()">
                             <option value="text">Text</option>
                             <option value="image">Image</option>
                             <option value="file">File</option>
@@ -726,8 +747,23 @@
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('mainContent').innerHTML = `
-                    <div class="alert alert-error">
-                        Error loading content. Please try again.
+                    <div style="padding: 2rem;">
+                        <div class="content-header">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h2>${pageId}</h2>
+                                    <p style="color: #e53e3e;">⚠️ Error loading page content</p>
+                                </div>
+                                <button class="btn btn-danger" onclick="deletePage('${pageId}')">
+                                    Delete Page
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-error" style="background: #fff5f5; border: 1px solid #fc8181; padding: 1rem; border-radius: 0.5rem; color: #c53030; margin-top: 1rem;">
+                            <strong>Failed to load page content</strong><br>
+                            This could be due to an invalid page ID or database error.<br>
+                            You can delete this page to remove it from the sidebar.
+                        </div>
                     </div>
                 `;
             });
@@ -737,18 +773,25 @@
             const contents = data.contents;
 
             // Update count
-            const countElement = document.getElementById(`count-${data.page_id.replace(/\./g, '-')}`);
+            const countElement = document.getElementById(`count-${data.page_id.replace(/\./g, '-').replace(/\//g, '-')}`);
             if (countElement) {
                 countElement.textContent = contents.length;
             }
 
             let html = `
                 <div class="content-header">
-                    <h2>${data.page_id}</h2>
-                    <p>${contents.length} content item(s)</p>
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <h2>${data.page_id}</h2>
+                            <p>${contents.length} content item(s)</p>
+                        </div>
+                        <button class="btn btn-danger" onclick="deletePage('${data.page_id}')" style="margin-top: 0.5rem;">
+                            Delete Page
+                        </button>
+                    </div>
                 </div>
                 <button class="add-content-btn" onclick="openAddModal()">
-                    ➕ Add New Content
+                    + Add New Content
                 </button>
                 <div class="content-grid">
             `;
@@ -802,8 +845,34 @@
             document.getElementById('contentForm').reset();
             document.getElementById('contentId').value = '';
             document.getElementById('pageId').value = currentPage;
-            document.getElementById('codeReminderAlert').style.display = 'block';
             document.getElementById('contentModal').classList.add('active');
+            updateComponentSnippet(); // Initialize snippet
+        }
+
+        function updateComponentSnippet() {
+            const type = document.getElementById('contentType').value;
+            const elementId = document.getElementById('elementId').value || 'element-id';
+            const snippet = `<x-editable-${type} element="${elementId}" />`;
+            document.getElementById('componentCodeSnippet').textContent = snippet;
+        }
+
+        function copyComponentCode() {
+            const snippet = document.getElementById('componentCodeSnippet').textContent;
+            const btn = document.getElementById('copyCodeBtn');
+
+            navigator.clipboard.writeText(snippet).then(() => {
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.style.background = '#38a169';
+
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#3182ce';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
         }
 
         function closeModal() {
@@ -929,6 +998,49 @@
             });
         }
 
+        function deletePage(pageId) {
+            if (!confirm(`Are you sure you want to delete the entire page "${pageId}" and all its content?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            fetch(`${apiBaseUrl}/page/${encodeURIComponent(pageId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove page from sidebar
+                    const pageItem = document.querySelector(`.page-item[data-page="${pageId}"]`);
+                    if (pageItem) {
+                        pageItem.remove();
+                    }
+
+                    // Show empty state
+                    document.getElementById('mainContent').innerHTML = `
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 64px; height: 64px; margin: 0 auto 1rem; opacity: 0.5;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <h3 style="margin-bottom: 0.5rem;">Page Deleted</h3>
+                            <p>${data.message}</p>
+                        </div>
+                    `;
+
+                    currentPage = null;
+                } else {
+                    alert('Error deleting page');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting page');
+            });
+        }
+
         // Close modal on outside click
         document.getElementById('contentModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -991,7 +1103,7 @@
                 // Check if this route is already in the sidebar (as DB page or temporary page)
                 const existingPages = Array.from(document.querySelectorAll('.page-item')).map(item => item.dataset.page);
                 const isExisting = existingPages.includes(route.uri);
-                
+
                 // Check if route URI is valid as page ID
                 const isValid = isValidPageId(route.uri);
                 const suggestion = !isValid ? suggestPageId(route.uri) : null;

@@ -16,9 +16,15 @@ class ContentEditorController
     public function index()
     {
         $pages = PageContent::select('page_id')
+            ->selectRaw('COUNT(*) as content_count')
             ->groupBy('page_id')
             ->get()
-            ->pluck('page_id');
+            ->map(function ($page) {
+                return [
+                    'page_id' => $page->page_id,
+                    'count' => $page->content_count,
+                ];
+            });
 
         return view('laravel-content::editor.index', compact('pages'));
     }
@@ -106,6 +112,31 @@ class ContentEditorController
     }
 
     /**
+     * Delete an entire page with all its content
+     */
+    public function destroyPage($pageId)
+    {
+        $count = PageContent::where('page_id', $pageId)->count();
+        
+        if ($count === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Page not found'
+            ], 404);
+        }
+
+        PageContent::where('page_id', $pageId)->delete();
+        
+        // Clear cache for this page
+        $this->clearPageCache($pageId);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Page deleted successfully ({$count} content items removed)"
+        ]);
+    }
+
+    /**
      * Clear cache for a specific page
      */
     protected function clearPageCache($pageId)
@@ -128,6 +159,11 @@ class ContentEditorController
 
             // Only include GET routes
             if (!in_array('GET', $methods)) {
+                return false;
+            }
+
+            // Exclude API routes
+            if (str_starts_with($uri, 'api/')) {
                 return false;
             }
 

@@ -6,9 +6,10 @@ A lightweight, developer-friendly content management package for Laravel applica
 
 - 🚀 **Simple Integration** - Drop-in Blade components for editable content
 - 📝 **Text, Image & File Support** - Manage text content, image paths, and file downloads
+- 🎨 **Built-in Visual Editor** - Clean, modern interface for managing all your content
 - 🔒 **Authentication Aware** - Only show edit indicators to authenticated users
 - ⚡ **Performance Optimized** - Built-in caching support for fast content retrieval
-- 🎨 **Customizable** - Extensive configuration options
+- 🎯 **Customizable** - Extensive configuration options
 - 🔧 **Developer-Friendly** - Minimal setup, maximum flexibility
 
 ## Installation
@@ -92,11 +93,55 @@ With custom link text:
 
 By default, the component displays the filename as link text. Use the `text` attribute to customize it.
 
+## Content Editor
+
+The package includes a beautiful, built-in visual editor for managing all your content.
+
+### Accessing the Editor
+
+Navigate to the editor at:
+
+```
+https://yoursite.com/admin/content
+```
+
+(The prefix is configurable via `CONTENT_ROUTE_PREFIX`)
+
+### Editor Features
+
+- **📋 Page List** - View all pages with content in a clean sidebar
+- **✏️ Inline Editing** - Edit content values directly with instant save
+- **➕ Add Content** - Add new content elements with helpful reminders
+- **🗑️ Delete Content** - Remove unwanted content items
+- **🔍 Content Overview** - See all content for each page at a glance
+- **💾 Auto-save** - Changes are saved immediately with visual feedback
+
+### Editor Access Control
+
+By default, the editor is protected by the middleware defined in your config:
+
+```php
+'middleware' => [
+    'web',
+    'auth',
+],
+```
+
+Add additional middleware for fine-grained control:
+
+```php
+'middleware' => [
+    'web',
+    'auth',
+    'can:manage-content',  // Require specific permission
+],
+```
+
 ### How It Works
 
 1. **Define Content Areas** - Add `<x-editable-text>`, `<x-editable-image>`, or `<x-editable-file>` components in your views with unique element identifiers
 2. **View Your Pages** - Content displays with default values when not yet defined
-3. **Edit Content** - Authenticated users see edit indicators (implementation of editor UI is up to you)
+3. **Edit Content** - Use the visual editor to update content or authenticated users see edit indicators on the frontend
 4. **Store in Database** - Content is stored per page and element combination
 
 ### Content Retrieval

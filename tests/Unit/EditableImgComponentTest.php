@@ -57,8 +57,7 @@ class EditableImgComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        // Test unauthenticated
-        $this->actingAs(null);
+        // Test unauthenticated (don't call actingAs with null)
         $component = new EditableImg('test-image');
         $view = $component->render();
 

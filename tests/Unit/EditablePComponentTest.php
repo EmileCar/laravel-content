@@ -58,8 +58,7 @@ class EditablePComponentTest extends TestCase
         Route::shouldReceive('currentRouteName')
             ->andReturn('test.page');
 
-        // Test unauthenticated
-        $this->actingAs(null);
+        // Test unauthenticated (don't call actingAs with null)
         $component = new EditableP('test-element');
         $view = $component->render();
 

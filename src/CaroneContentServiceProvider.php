@@ -46,8 +46,14 @@ class CaroneContentServiceProvider extends ServiceProvider
 
     protected function registerRoutes()
     {
+        // Register web routes (editor page)
         Route::group($this->routeConfiguration(), function () {
             $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+        });
+
+        // Register API routes (AJAX endpoints)
+        Route::group($this->apiRouteConfiguration(), function () {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
         });
     }
 
@@ -56,6 +62,14 @@ class CaroneContentServiceProvider extends ServiceProvider
         return [
             'prefix' => config('content.route_prefix', 'admin/content'),
             'middleware' => config('content.middleware', []),
+        ];
+    }
+
+    protected function apiRouteConfiguration()
+    {
+        return [
+            'prefix' => 'api/' . config('content.route_prefix', 'admin/content'),
+            'middleware' => array_merge(['api'], config('content.middleware', [])),
         ];
     }
 

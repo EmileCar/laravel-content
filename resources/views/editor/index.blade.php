@@ -367,6 +367,147 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .route-explorer-btn {
+            position: sticky;
+            bottom: 0;
+            padding: 1rem 1.25rem;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: #3182ce;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .route-explorer-btn:hover {
+            background: #f7fafc;
+            color: #2c5282;
+        }
+
+        .route-explorer-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .routes-modal .modal-content {
+            max-width: 700px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .routes-modal .modal-body {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .route-list {
+            list-style: none;
+        }
+
+        .route-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            transition: background 0.2s;
+        }
+
+        .route-item:last-child {
+            border-bottom: none;
+        }
+
+        .route-item:hover {
+            background: #f7fafc;
+        }
+
+        .route-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .route-uri {
+            font-weight: 500;
+            color: #2d3748;
+            margin-bottom: 0.25rem;
+            word-break: break-all;
+        }
+
+        .route-name {
+            font-size: 0.75rem;
+            color: #718096;
+            font-family: 'Courier New', monospace;
+        }
+
+        .quick-add-btn {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .quick-add-btn:hover {
+            background: #38a169;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .quick-add-btn:active {
+            transform: translateY(0);
+        }
+
+        .quick-add-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .route-search {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f7fafc;
+        }
+
+        .route-search input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .route-search input:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
+        .page-item.temporary {
+            background: #fefcbf;
+            border-left: 3px solid #d69e2e;
+        }
+
+        .page-item.temporary .content-count {
+            background: #fbd38d;
+            color: #7c2d12;
+        }
     </style>
 </head>
 <body>
@@ -391,6 +532,12 @@
                     </li>
                 @endforelse
             </ul>
+            <div class="route-explorer-btn" onclick="openRouteExplorer()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <span>Discover Routes</span>
+            </div>
         </div>
 
         <div class="main-content" id="mainContent">
@@ -454,13 +601,37 @@
         </div>
     </div>
 
+    <!-- Route Explorer Modal -->
+    <div class="modal routes-modal" id="routeExplorerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔍 Discover Application Routes</h3>
+            </div>
+            <div class="route-search">
+                <input type="text" id="routeSearchInput" placeholder="Search routes..." onkeyup="filterRoutes()">
+            </div>
+            <div class="modal-body" id="routeListContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading routes...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRouteExplorer()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentPage = null;
+        let allRoutes = [];
+        let temporaryPages = new Set(); // Track pages added via quick-add (not yet persisted)
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const apiBaseUrl = '/api/{{ config("content.route_prefix", "admin/content") }}';
 
         function loadPage(pageId) {
             currentPage = pageId;
-            
+            console.log(currentPage);
             // Update active state
             document.querySelectorAll('.page-item').forEach(item => {
                 item.classList.remove('active');
@@ -476,7 +647,7 @@
             `;
 
             // Fetch page content
-            fetch(`{{ config('content.route_prefix', 'admin/content') }}/page/${pageId}`, {
+            fetch(`${apiBaseUrl}/page/${pageId}`, {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
@@ -498,7 +669,7 @@
 
         function displayPageContent(data) {
             const contents = data.contents;
-            
+
             // Update count
             const countElement = document.getElementById(`count-${data.page_id.replace(/\./g, '-')}`);
             if (countElement) {
@@ -534,8 +705,8 @@
 
         function createContentCard(content) {
             const value = content.value || '';
-            const displayValue = content.type === 'text' && value.length > 200 
-                ? value.substring(0, 200) + '...' 
+            const displayValue = content.type === 'text' && value.length > 200
+                ? value.substring(0, 200) + '...'
                 : value;
 
             return `
@@ -575,7 +746,7 @@
 
         document.getElementById('contentForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const formData = {
                 page_id: document.getElementById('pageId').value,
                 element_id: document.getElementById('elementId').value,
@@ -583,7 +754,7 @@
                 value: document.getElementById('contentValue').value
             };
 
-            fetch(`{{ config('content.route_prefix', 'admin/content') }}/content`, {
+            fetch(`${apiBaseUrl}/content`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -613,7 +784,7 @@
             const pageId = pageItem ? pageItem.dataset.page : currentPage;
 
             // Find the content to get element_id and type
-            fetch(`{{ config('content.route_prefix', 'admin/content') }}/page/${pageId}`, {
+            fetch(`${apiBaseUrl}/page/${pageId}`, {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
@@ -623,7 +794,7 @@
             .then(data => {
                 const content = data.contents.find(c => c.id === contentId);
                 if (content) {
-                    return fetch(`{{ config('content.route_prefix', 'admin/content') }}/content`, {
+                    return fetch(`${apiBaseUrl}/content`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -664,7 +835,7 @@
                 return;
             }
 
-            fetch(`{{ config('content.route_prefix', 'admin/content') }}/content/${contentId}`, {
+            fetch(`${apiBaseUrl}/content/${contentId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -690,6 +861,238 @@
             if (e.target === this) {
                 closeModal();
             }
+        });
+
+        document.getElementById('routeExplorerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeRouteExplorer();
+            }
+        });
+
+        // Route Explorer Functions
+        function openRouteExplorer() {
+            document.getElementById('routeExplorerModal').classList.add('active');
+            loadRoutes();
+        }
+
+        function closeRouteExplorer() {
+            document.getElementById('routeExplorerModal').classList.remove('active');
+            document.getElementById('routeSearchInput').value = '';
+        }
+
+        function loadRoutes() {
+            fetch(`${apiBaseUrl}/routes`, {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                allRoutes = data.routes;
+                displayRoutes(allRoutes);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('routeListContainer').innerHTML = `
+                    <div style="padding: 2rem; text-align: center; color: #e53e3e;">
+                        <p>Error loading routes</p>
+                    </div>
+                `;
+            });
+        }
+
+        function displayRoutes(routes) {
+            const container = document.getElementById('routeListContainer');
+
+            if (routes.length === 0) {
+                container.innerHTML = `
+                    <div style="padding: 2rem; text-align: center; color: #718096;">
+                        <p>No routes found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const routeList = routes.map(route => {
+                // Check if this route is already in the sidebar (as DB page or temporary page)
+                const existingPages = Array.from(document.querySelectorAll('.page-item')).map(item => item.dataset.page);
+                const isExisting = existingPages.includes(route.uri);
+
+                return `
+                    <li class="route-item">
+                        <div class="route-info">
+                            <div class="route-uri">${route.uri}</div>
+                            ${route.name ? `<div class="route-name">${route.name}</div>` : ''}
+                        </div>
+                        ${isExisting ?
+                            `<span style="color: #718096; font-size: 0.75rem;">Already added</span>` :
+                            `<button class="quick-add-btn" onclick="quickAddPage('${route.uri}')">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Quick Add
+                            </button>`
+                        }
+                    </li>
+                `;
+            }).join('');
+
+            container.innerHTML = `<ul class="route-list">${routeList}</ul>`;
+        }
+
+        function filterRoutes() {
+            const searchTerm = document.getElementById('routeSearchInput').value.toLowerCase();
+            const filteredRoutes = allRoutes.filter(route =>
+                route.uri.toLowerCase().includes(searchTerm) ||
+                (route.name && route.name.toLowerCase().includes(searchTerm))
+            );
+            displayRoutes(filteredRoutes);
+        }
+
+        function quickAddPage(pageId) {
+            // Add to temporary pages set
+            temporaryPages.add(pageId);
+
+            // Add to sidebar
+            const pageList = document.getElementById('pageList');
+
+            // Remove "No pages found" message if it exists
+            const emptyMessage = pageList.querySelector('li:not(.page-item)');
+            if (emptyMessage) {
+                emptyMessage.remove();
+            }
+
+            // Create new page item with temporary styling
+            const newPageItem = document.createElement('li');
+            newPageItem.className = 'page-item temporary';
+            newPageItem.dataset.page = pageId;
+            newPageItem.onclick = () => loadPage(pageId);
+            newPageItem.innerHTML = `
+                <span class="page-name">${pageId}</span>
+                <span class="content-count" id="count-${pageId.replace(/[^a-z0-9]/gi, '-')}">0</span>
+            `;
+
+            pageList.appendChild(newPageItem);
+
+            // Close route explorer and immediately load the new page
+            closeRouteExplorer();
+
+            // Trigger click to load the page
+            newPageItem.click();
+
+            // Show the add content modal automatically
+            setTimeout(() => {
+                openAddModal();
+            }, 300);
+        }
+
+        // Modified loadPage to handle temporary pages
+        const originalLoadPage = loadPage;
+        function loadPage(pageId) {
+            currentPage = pageId;
+
+            // Update active state
+            document.querySelectorAll('.page-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Find and activate the clicked page item
+            const pageItem = document.querySelector(`.page-item[data-page="${pageId}"]`);
+            if (pageItem) {
+                pageItem.classList.add('active');
+            }
+
+            // For temporary pages, show empty state with add button
+            if (temporaryPages.has(pageId)) {
+                document.getElementById('mainContent').innerHTML = `
+                    <div class="content-header">
+                        <h2>${pageId}</h2>
+                        <p style="color: #d69e2e; font-weight: 500;">⚠️ New page - Add content to persist it to the database</p>
+                    </div>
+                    <button class="add-content-btn" onclick="openAddModal()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add Content
+                    </button>
+                    <div id="contentList" class="content-grid"></div>
+                `;
+                return;
+            }
+
+            // Show loading
+            document.getElementById('mainContent').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading page content...</p>
+                </div>
+            `;
+
+            // Load page content from server
+            fetch(`${apiBaseUrl}/page/${pageId}`, {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayPageContent(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('mainContent').innerHTML = `
+                    <div style="padding: 2rem; text-align: center; color: #e53e3e;">
+                        <p>Error loading page content</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Modified store to remove temporary status when content is saved
+        document.getElementById('contentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = {
+                page_id: document.getElementById('pageId').value,
+                element_id: document.getElementById('elementId').value,
+                type: document.getElementById('contentType').value,
+                value: document.getElementById('contentValue').value
+            };
+
+            fetch(`${apiBaseUrl}/content`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal();
+
+                    // Remove from temporary pages set (it's now persisted)
+                    temporaryPages.delete(formData.page_id);
+
+                    // Remove temporary styling from page item
+                    const pageItem = document.querySelector(`.page-item[data-page="${formData.page_id}"]`);
+                    if (pageItem) {
+                        pageItem.classList.remove('temporary');
+                    }
+
+                    loadPage(formData.page_id);
+                } else {
+                    alert('Error saving content');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving content');
+            });
         });
     </script>
 </body>

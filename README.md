@@ -113,8 +113,32 @@ https://yoursite.com/admin/content
 - **✏️ Inline Editing** - Edit content values directly with instant save
 - **➕ Add Content** - Add new content elements with helpful reminders
 - **🗑️ Delete Content** - Remove unwanted content items
-- **🔍 Content Overview** - See all content for each page at a glance
+- **🔍 Route Explorer** - Discover and quick-add content for any application route
 - **💾 Auto-save** - Changes are saved immediately with visual feedback
+
+### Route Explorer
+
+The editor includes a powerful "Route Explorer" feature that helps you quickly start managing content for any page in your application:
+
+1. Click **"Discover Routes"** at the bottom of the sidebar
+2. Browse all your application's web routes
+3. Click **"Quick Add"** next to any route to:
+   - Add the page to your sidebar
+   - Automatically open the "Add Content" modal
+   - Start creating content immediately
+
+Pages added via Route Explorer are tracked in the frontend until you save your first content item, making it easy to explore without cluttering your database.
+
+### API Routes
+
+The editor uses the following API endpoints (all under `/api/admin/content` by default):
+
+- `GET /page/{pageId}` - Fetch content for a specific page
+- `POST /content` - Create or update content
+- `DELETE /content/{id}` - Delete content
+- `GET /routes` - Get all application routes
+
+These routes automatically include the `api` middleware and can be further protected via your config.
 
 ### Editor Access Control
 

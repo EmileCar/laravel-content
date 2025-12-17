@@ -5,6 +5,7 @@ namespace Carone\Content\Http\Controllers;
 use Carone\Content\Models\PageContent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 
 class ContentEditorController
@@ -103,4 +104,58 @@ class ContentEditorController
             Cache::forget($cacheKey);
         }
     }
+
+    /**
+     * Get all web routes from the application (excluding dev tools and editor routes)
+     */
+    public function getWebRoutes()
+    {
+        $routes = collect(Route::getRoutes())->filter(function ($route) {
+            $uri = $route->uri();
+            $name = $route->getName();
+            $methods = $route->methods();
+
+            // Only include GET routes
+            if (!in_array('GET', $methods)) {
+                return false;
+            }
+
+            // Exclude routes with parameters (e.g., {id}, {slug})
+            if (preg_match('/\{.*\}/', $uri)) {
+                return false;
+            }
+
+            // Exclude development/debugging routes
+            $excludePatterns = [
+                '_debugbar', 'debugbar', 'telescope', 'horizon', 
+                'ignition', 'livewire', 'nova', 'pulse', 
+                '_ignition', 'sanctum', 'broadcasting'
+            ];
+
+            foreach ($excludePatterns as $pattern) {
+                if (stripos($uri, $pattern) !== false || ($name && stripos($name, $pattern) !== false)) {
+                    return false;
+                }
+            }
+
+            // Exclude the editor routes
+            $editorPrefix = config('content.route_prefix', 'admin/content');
+            if (str_starts_with($uri, $editorPrefix)) {
+                return false;
+            }
+
+            return true;
+        })->map(function ($route) {
+            return [
+                'uri' => $route->uri(),
+                'name' => $route->getName(),
+                'display' => $route->getName() ?: $route->uri(),
+            ];
+        })->unique('uri')->values();
+
+        return response()->json([
+            'routes' => $routes
+        ]);
+    }
 }
+

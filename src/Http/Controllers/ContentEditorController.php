@@ -44,7 +44,18 @@ class ContentEditorController
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'page_id' => 'required|string|max:255',
+            'page_id' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z0-9][a-zA-Z0-9\-_.\/]*[a-zA-Z0-9]$/',
+                function ($attribute, $value, $fail) {
+                    // Disallow single slash or paths that would create double slashes
+                    if ($value === '/' || str_contains($value, '//')) {
+                        $fail('The page ID cannot be "/" or contain "//". Use a valid identifier like "home" instead.');
+                    }
+                },
+            ],
             'element_id' => 'required|string|max:255',
             'type' => 'required|in:' . implode(',', config('content.content_types', ['text', 'image', 'file'])),
             'value' => 'nullable|string',

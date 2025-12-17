@@ -508,6 +508,45 @@
             background: #fbd38d;
             color: #7c2d12;
         }
+
+        .route-warning {
+            background: #fef5e7;
+            border: 1px solid #f39c12;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #c87100;
+        }
+
+        .route-warning strong {
+            display: block;
+            margin-bottom: 0.25rem;
+            color: #d35400;
+        }
+
+        .route-suggestion {
+            background: white;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            margin-top: 0.5rem;
+            font-family: 'Courier New', monospace;
+            color: #27ae60;
+            border: 1px dashed #27ae60;
+        }
+
+        .quick-add-btn.disabled {
+            background: #cbd5e0;
+            color: #718096;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .quick-add-btn.disabled:hover {
+            background: #cbd5e0;
+            transform: none;
+            box-shadow: none;
+        }
     </style>
 </head>
 <body>
@@ -628,6 +667,33 @@
         let temporaryPages = new Set(); // Track pages added via quick-add (not yet persisted)
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const apiBaseUrl = '/api/{{ config("content.route_prefix", "admin/content") }}';
+
+        // Validate page ID
+        function isValidPageId(pageId) {
+            // Cannot be just "/"
+            if (pageId === '/') {
+                return false;
+            }
+            // Cannot contain "//"
+            if (pageId.includes('//')) {
+                return false;
+            }
+            // Must match pattern: start and end with alphanumeric, can contain - _ . / in between
+            const pattern = /^[a-zA-Z0-9][a-zA-Z0-9\-_.\/]*[a-zA-Z0-9]$/;
+            return pattern.test(pageId);
+        }
+
+        // Suggest alternative for invalid page IDs
+        function suggestPageId(pageId) {
+            if (pageId === '/') {
+                return 'home';
+            }
+            // Remove double slashes
+            if (pageId.includes('//')) {
+                return pageId.replace(/\/+/g, '/');
+            }
+            return pageId;
+        }
 
         function loadPage(pageId) {
             currentPage = pageId;
@@ -768,6 +834,13 @@
                 if (data.success) {
                     closeModal();
                     loadPage(currentPage);
+                } else if (data.errors) {
+                    // Display validation errors
+                    let errorMessage = 'Validation errors:\n';
+                    for (const [field, messages] of Object.entries(data.errors)) {
+                        errorMessage += `\n${field}: ${messages.join(', ')}`;
+                    }
+                    alert(errorMessage);
                 } else {
                     alert('Error saving content');
                 }
@@ -918,22 +991,49 @@
                 // Check if this route is already in the sidebar (as DB page or temporary page)
                 const existingPages = Array.from(document.querySelectorAll('.page-item')).map(item => item.dataset.page);
                 const isExisting = existingPages.includes(route.uri);
+                
+                // Check if route URI is valid as page ID
+                const isValid = isValidPageId(route.uri);
+                const suggestion = !isValid ? suggestPageId(route.uri) : null;
+
+                let actionButton = '';
+                let warningMessage = '';
+
+                if (isExisting) {
+                    actionButton = `<span style="color: #718096; font-size: 0.75rem;">Already added</span>`;
+                } else if (!isValid) {
+                    actionButton = `<button class="quick-add-btn disabled" disabled title="Invalid page ID">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        Invalid ID
+                    </button>`;
+                    warningMessage = `
+                        <div class="route-warning">
+                            <strong>⚠️ Invalid Page ID</strong>
+                            This route cannot be used as a page ID because it would create invalid URLs.
+                            ${suggestion ? `<div class="route-suggestion">💡 Suggested alternative: "${suggestion}"<br>You can manually add content using this identifier instead.</div>` : ''}
+                        </div>
+                    `;
+                } else {
+                    actionButton = `<button class="quick-add-btn" onclick="quickAddPage('${route.uri}')">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Quick Add
+                    </button>`;
+                }
 
                 return `
-                    <li class="route-item">
-                        <div class="route-info">
-                            <div class="route-uri">${route.uri}</div>
-                            ${route.name ? `<div class="route-name">${route.name}</div>` : ''}
+                    <li class="route-item" style="flex-direction: column; align-items: stretch;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                            <div class="route-info">
+                                <div class="route-uri">${route.uri}</div>
+                                ${route.name ? `<div class="route-name">${route.name}</div>` : ''}
+                            </div>
+                            ${actionButton}
                         </div>
-                        ${isExisting ?
-                            `<span style="color: #718096; font-size: 0.75rem;">Already added</span>` :
-                            `<button class="quick-add-btn" onclick="quickAddPage('${route.uri}')">
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Quick Add
-                            </button>`
-                        }
+                        ${warningMessage}
                     </li>
                 `;
             }).join('');
@@ -1085,6 +1185,13 @@
                     }
 
                     loadPage(formData.page_id);
+                } else if (data.errors) {
+                    // Display validation errors
+                    let errorMessage = 'Validation errors:\n';
+                    for (const [field, messages] of Object.entries(data.errors)) {
+                        errorMessage += `\n${field}: ${messages.join(', ')}`;
+                    }
+                    alert(errorMessage);
                 } else {
                     alert('Error saving content');
                 }

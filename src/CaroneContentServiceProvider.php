@@ -42,6 +42,7 @@ class CaroneContentServiceProvider extends ServiceProvider
 
         $this->registerRoutes();
         $this->registerBladeComponents();
+        $this->registerCommands();
     }
 
     protected function registerRoutes()
@@ -80,5 +81,16 @@ class CaroneContentServiceProvider extends ServiceProvider
             \Carone\Content\View\Components\EditableImage::class,
             \Carone\Content\View\Components\EditableFile::class,
         ]);
+    }
+
+    protected function registerCommands()
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Carone\Content\Console\Commands\CreateContentCommand::class,
+                \Carone\Content\Console\Commands\ClearContentCommand::class,
+                \Carone\Content\Console\Commands\ListContentCommand::class,
+            ]);
+        }
     }
 }

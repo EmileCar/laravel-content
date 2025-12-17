@@ -179,6 +179,72 @@ $value = $content->get('about-me-text');
 
 Content is automatically cached based on your configuration settings for optimal performance.
 
+## Console Commands
+
+The package provides convenient Artisan commands for managing content:
+
+### Create Content
+
+Interactively create new page content:
+
+```bash
+php artisan content:create
+```
+
+With options for automation:
+
+```bash
+php artisan content:create --page=home --element=hero-title --type=text --value="Welcome to our site"
+```
+
+Features:
+- ✅ Page ID validation (prevents invalid routes like `/`)
+- ✅ Duplicate detection with update option
+- ✅ Context-aware prompts based on content type
+- ✅ Automatic cache clearing
+- ✅ Shows component code to add to your view
+
+### List Content
+
+Display all page content in a clean table:
+
+```bash
+php artisan content:list
+```
+
+Filter by page or type:
+
+```bash
+php artisan content:list --page=home
+php artisan content:list --type=image
+php artisan content:list --page=about --full  # Show full values
+```
+
+Features:
+- 📋 Grouped by page when showing all content
+- 🎨 Color-coded content types
+- ✂️ Automatic value truncation (use `--full` to disable)
+
+### Clear Content
+
+Clear content from the database:
+
+```bash
+# Clear all content (with confirmation)
+php artisan content:clear
+
+# Clear specific page
+php artisan content:clear --page=home
+
+# Skip confirmation
+php artisan content:clear --force
+```
+
+Features:
+- ⚠️ Confirmation prompts for safety
+- 🗑️ Shows what will be deleted before clearing
+- 🧹 Automatic cache clearing
+
 ## Configuration
 
 The `config/content.php` file provides extensive customization options:
@@ -259,6 +325,22 @@ The package creates a `page_contents` table with the following structure:
 | page_id | string | Route name or page identifier |
 | element_id | string | Unique element identifier |
 | type | enum | Content type ('text', 'image', or 'file') |
+
+### Page ID Validation
+
+Page IDs must follow these rules to ensure valid URLs:
+
+- ✅ **Valid**: `home`, `about`, `contact`, `blog/post-1`, `products/category`
+- ❌ **Invalid**: `/` (root route), paths with `//` (double slashes)
+- Must start and end with alphanumeric characters
+- Can contain: letters, numbers, hyphens (`-`), underscores (`_`), dots (`.`), forward slashes (`/`)
+
+**Note**: The root route `/` cannot be used as a page ID. Use `home` or another identifier instead.
+
+The editor's Route Explorer will automatically:
+- Display a warning for routes with invalid page IDs
+- Suggest alternatives (e.g., `home` for `/`)
+- Disable the "Quick Add" button for invalid routes
 
 ## API Routes
 

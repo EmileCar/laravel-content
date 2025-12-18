@@ -16,7 +16,7 @@ class ContentEditorController
     public function index()
     {
         $pages = PageContent::select('page_id')
-            ->selectRaw('COUNT(*) as content_count')
+            ->selectRaw('COUNT(DISTINCT CONCAT(element_id, "-", locale)) as content_count')
             ->groupBy('page_id')
             ->get()
             ->map(function ($page) {
@@ -26,20 +26,31 @@ class ContentEditorController
                 ];
             });
 
-        return view('laravel-content::editor.index', compact('pages'));
+        $availableLocales = config('content.locale.available', ['en' => 'English']);
+
+        return view('laravel-content::editor.index', compact('pages', 'availableLocales'));
     }
 
     /**
-     * Get content for a specific page
+     * Get content for a specific page (optionally filtered by locale)
      */
-    public function getPageContent($pageId)
+    public function getPageContent(Request $request, $pageId)
     {
-        $contents = PageContent::where('page_id', $pageId)
+        $locale = $request->get('locale');
+
+        $query = PageContent::where('page_id', $pageId)
             ->orderBy('element_id')
-            ->get();
+            ->orderBy('locale');
+
+        if ($locale) {
+            $query->where('locale', $locale);
+        }
+
+        $contents = $query->get();
 
         return response()->json([
             'page_id' => $pageId,
+            'locale' => $locale,
             'contents' => $contents
         ]);
     }
@@ -63,6 +74,7 @@ class ContentEditorController
                 },
             ],
             'element_id' => 'required|string|max:255',
+            'locale' => 'required|string|max:10',
             'type' => 'required|in:' . implode(',', config('content.content_types', ['text', 'image', 'file'])),
             'value' => 'nullable|string',
         ]);
@@ -73,17 +85,18 @@ class ContentEditorController
 
         $content = PageContent::updateOrCreate(
             [
-                'page_id' => $request->page_id,
-                'element_id' => $request->element_id,
+                'page_id' => $request->input('page_id'),
+                'element_id' => $request->input('element_id'),
+                'locale' => $request->input('locale'),
             ],
             [
-                'type' => $request->type,
-                'value' => $request->value,
+                'type' => $request->input('type'),
+                'value' => $request->input('value'),
             ]
         );
 
-        // Clear cache for this page
-        $this->clearPageCache($request->page_id);
+        // Clear cache for this page and locale
+        $this->clearPageCache($request->input('page_id'), $request->input('locale'));
 
         return response()->json([
             'success' => true,
@@ -99,11 +112,12 @@ class ContentEditorController
     {
         $content = PageContent::findOrFail($id);
         $pageId = $content->page_id;
-        
+        $locale = $content->locale;
+
         $content->delete();
-        
-        // Clear cache for this page
-        $this->clearPageCache($pageId);
+
+        // Clear cache for this page and locale
+        $this->clearPageCache($pageId, $locale);
 
         return response()->json([
             'success' => true,
@@ -112,12 +126,12 @@ class ContentEditorController
     }
 
     /**
-     * Delete an entire page with all its content
+     * Delete an entire page with all its content (all locales)
      */
     public function destroyPage($pageId)
     {
         $count = PageContent::where('page_id', $pageId)->count();
-        
+
         if ($count === 0) {
             return response()->json([
                 'success' => false,
@@ -126,9 +140,9 @@ class ContentEditorController
         }
 
         PageContent::where('page_id', $pageId)->delete();
-        
-        // Clear cache for this page
-        $this->clearPageCache($pageId);
+
+        // Clear cache for this page (all locales)
+        $this->clearPageCacheAllLocales($pageId);
 
         return response()->json([
             'success' => true,
@@ -137,12 +151,31 @@ class ContentEditorController
     }
 
     /**
-     * Clear cache for a specific page
+     * Clear cache for a specific page and locale
      */
-    protected function clearPageCache($pageId)
+    protected function clearPageCache($pageId, $locale = null)
     {
-        if (config('content.cache.enabled', true)) {
-            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId;
+        if (!config('content.cache.enabled', true)) {
+            return;
+        }
+
+        $locale = $locale ?? PageContent::getDefaultLocale();
+        $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId . '_' . $locale;
+        Cache::forget($cacheKey);
+    }
+
+    /**
+     * Clear cache for a page across all locales
+     */
+    protected function clearPageCacheAllLocales($pageId)
+    {
+        if (!config('content.cache.enabled', true)) {
+            return;
+        }
+
+        $locales = array_keys(config('content.locale.available', ['en' => 'English']));
+        foreach ($locales as $locale) {
+            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId . '_' . $locale;
             Cache::forget($cacheKey);
         }
     }
@@ -174,8 +207,8 @@ class ContentEditorController
 
             // Exclude development/debugging routes
             $excludePatterns = [
-                '_debugbar', 'debugbar', 'telescope', 'horizon', 
-                'ignition', 'livewire', 'nova', 'pulse', 
+                '_debugbar', 'debugbar', 'telescope', 'horizon',
+                'ignition', 'livewire', 'nova', 'pulse',
                 '_ignition', 'sanctum', 'broadcasting'
             ];
 

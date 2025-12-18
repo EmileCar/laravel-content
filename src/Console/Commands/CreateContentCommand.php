@@ -17,6 +17,7 @@ class CreateContentCommand extends Command
     protected $signature = 'content:create
                             {--page= : The page identifier}
                             {--element= : The element identifier}
+                            {--locale= : The locale (e.g., en, nl, fr)}
                             {--type= : The content type (text, image, file)}
                             {--value= : The content value}';
 
@@ -37,7 +38,7 @@ class CreateContentCommand extends Command
 
         // Get page ID with validation
         $pageId = $this->option('page') ?? $this->ask('Page identifier (e.g., home, about, blog/post-1)');
-        
+
         if (!$this->isValidPageId($pageId)) {
             $this->error("❌ Invalid page ID: '{$pageId}'");
             $this->warn('Page ID must:');
@@ -47,8 +48,27 @@ class CreateContentCommand extends Command
             $this->newLine();
             $suggestion = $this->suggestPageId($pageId);
             $this->info("💡 Try using: {$suggestion}");
-            
+
             return Command::FAILURE;
+        }
+
+        // Get locale
+        $availableLocales = array_keys(config('content.locale.available', ['en' => 'English']));
+        $defaultLocale = PageContent::getDefaultLocale();
+
+        $locale = $this->option('locale');
+        if (!$locale) {
+            if (count($availableLocales) > 1) {
+                $localeChoices = array_map(function($loc) use ($defaultLocale) {
+                    return $loc . ($loc === $defaultLocale ? ' (default)' : '');
+                }, $availableLocales);
+                $selectedIndex = array_search($defaultLocale, $availableLocales);
+                $locale = $this->choice('Select locale', $localeChoices, $selectedIndex);
+                $locale = explode(' ', $locale)[0]; // Remove "(default)" suffix
+            } else {
+                $locale = $defaultLocale;
+                $this->info("Using default locale: {$locale}");
+            }
         }
 
         // Get content type
@@ -63,13 +83,16 @@ class CreateContentCommand extends Command
         $elementId = $this->option('element') ?? $this->ask('Element identifier (e.g., hero-title, about-text)');
 
         // Check if already exists
-        if (PageContent::where('page_id', $pageId)->where('element_id', $elementId)->exists()) {
-            $this->error("❌ Content with element '{$elementId}' already exists on page '{$pageId}'!");
-            
+        if (PageContent::where('page_id', $pageId)
+            ->where('element_id', $elementId)
+            ->where('locale', $locale)
+            ->exists()) {
+            $this->error("❌ Content with element '{$elementId}' already exists on page '{$pageId}' for locale '{$locale}'!");
+
             if ($this->confirm('Do you want to update it instead?', false)) {
-                return $this->updateExisting($pageId, $elementId, $type);
+                return $this->updateExisting($pageId, $elementId, $locale, $type);
             }
-            
+
             return Command::FAILURE;
         }
 
@@ -80,25 +103,30 @@ class CreateContentCommand extends Command
         $content = PageContent::create([
             'page_id' => $pageId,
             'element_id' => $elementId,
+            'locale' => $locale,
             'type' => $type,
             'value' => $value,
         ]);
 
         // Clear cache
-        $this->clearCache($pageId);
+        $this->clearCache($pageId, $locale);
 
         $this->newLine();
         $this->info('✅ Content created successfully!');
         $this->newLine();
-        
+
         $this->table(
-            ['ID', 'Page', 'Element', 'Type', 'Value'],
-            [[$content->id, $content->page_id, $content->element_id, $content->type, $this->truncate($content->value)]]
+            ['ID', 'Page', 'Element', 'Locale', 'Type', 'Value'],
+            [[$content->id, $content->page_id, $content->element_id, $content->locale, $content->type, $this->truncate($content->value)]]
         );
 
         $this->newLine();
         $this->comment('💡 Add this component to your view:');
-        $this->line("   <x-editable-{$type} element=\"{$elementId}\" />");
+        if ($locale !== $defaultLocale) {
+            $this->line("   <x-editable-{$type} element=\"{$elementId}\" locale=\"{$locale}\" />");
+        } else {
+            $this->line("   <x-editable-{$type} element=\"{$elementId}\" />");
+        }
         $this->newLine();
 
         return Command::SUCCESS;
@@ -107,10 +135,11 @@ class CreateContentCommand extends Command
     /**
      * Update existing content
      */
-    protected function updateExisting($pageId, $elementId, $type)
+    protected function updateExisting($pageId, $elementId, $locale, $type)
     {
         $content = PageContent::where('page_id', $pageId)
             ->where('element_id', $elementId)
+            ->where('locale', $locale)
             ->first();
 
         $this->info("Current value: {$this->truncate($content->value)}");
@@ -121,10 +150,10 @@ class CreateContentCommand extends Command
             'value' => $newValue,
         ]);
 
-        $this->clearCache($pageId);
+        $this->clearCache($pageId, $locale);
 
         $this->info('✅ Content updated successfully!');
-        
+
         return Command::SUCCESS;
     }
 
@@ -173,10 +202,11 @@ class CreateContentCommand extends Command
     /**
      * Clear cache for page
      */
-    protected function clearCache($pageId)
+    protected function clearCache($pageId, $locale = null)
     {
         if (config('content.cache.enabled', true)) {
-            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId;
+            $locale = $locale ?? PageContent::getDefaultLocale();
+            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId . '_' . $locale;
             Cache::forget($cacheKey);
         }
     }
@@ -186,8 +216,8 @@ class CreateContentCommand extends Command
      */
     protected function truncate($value, $length = 50)
     {
-        return strlen($value) > $length 
-            ? substr($value, 0, $length) . '...' 
+        return strlen($value) > $length
+            ? substr($value, 0, $length) . '...'
             : $value;
     }
 }

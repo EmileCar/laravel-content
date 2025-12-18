@@ -72,6 +72,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Locale Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure multi-language support for your content.
+    | The default locale will be used when no locale is specified.
+    | Available locales determines which languages can be used in the editor.
+    |
+    */
+    'locale' => [
+        'enabled' => env('CONTENT_LOCALE_ENABLED', true),
+        'default' => env('CONTENT_DEFAULT_LOCALE', 'en'),
+        'fallback' => env('CONTENT_FALLBACK_LOCALE_ENABLED', true),
+        'available' => [
+            'en' => 'English',
+            'nl' => 'Nederlands',
+            'fr' => 'Français',
+            'de' => 'Deutsch',
+            'es' => 'Español',
+            // Add more locales as needed
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Content Types
     |--------------------------------------------------------------------------
     |

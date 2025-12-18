@@ -26,6 +26,7 @@ class EditableImageComponentTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'logo',
+            'locale' => 'en',
             'type' => 'image',
             'value' => 'images/logo.png',
         ]);

@@ -27,6 +27,7 @@ class GetContentHelperTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Test Title',
         ]);
@@ -34,6 +35,7 @@ class GetContentHelperTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'description',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Test Description',
         ]);
@@ -66,6 +68,7 @@ class GetContentHelperTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'hero-title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Welcome',
         ]);
@@ -85,6 +88,7 @@ class GetContentHelperTest extends TestCase
         PageContent::create([
             'page_id' => 'page1',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Page 1 Title',
         ]);
@@ -92,6 +96,7 @@ class GetContentHelperTest extends TestCase
         PageContent::create([
             'page_id' => 'page2',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Page 2 Title',
         ]);
@@ -111,6 +116,7 @@ class GetContentHelperTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'optional-content',
+            'locale' => 'en',
             'type' => 'text',
             'value' => null,
         ]);
@@ -140,6 +146,7 @@ class GetContentHelperTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'logo',
+            'locale' => 'en',
             'type' => 'image',
             'value' => 'images/logo.png',
         ]);
@@ -150,5 +157,134 @@ class GetContentHelperTest extends TestCase
         $content = get_content(resetCache: true);
 
         $this->assertEquals('images/logo.png', $content->get('logo'));
+    }
+
+    /** @test */
+    public function it_retrieves_content_for_specific_locale()
+    {
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'en',
+            'type' => 'text',
+            'value' => 'English Title',
+        ]);
+
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'nl',
+            'type' => 'text',
+            'value' => 'Nederlandse Titel',
+        ]);
+
+        Route::shouldReceive('currentRouteName')
+            ->andReturn('test.page');
+
+        $contentEn = get_content('en', resetCache: true);
+        $contentNl = get_content('nl', resetCache: true);
+
+        $this->assertEquals('English Title', $contentEn->get('title'));
+        $this->assertEquals('Nederlandse Titel', $contentNl->get('title'));
+    }
+
+    /** @test */
+    public function it_falls_back_to_default_locale_when_content_not_found()
+    {
+        config(['content.locale.fallback' => true]);
+        config(['content.locale.default' => 'en']);
+
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'en',
+            'type' => 'text',
+            'value' => 'English Title',
+        ]);
+
+        Route::shouldReceive('currentRouteName')
+            ->andReturn('test.page');
+
+        // Request content in French (not available), should fallback to English
+        $content = get_content('fr', resetCache: true);
+
+        $this->assertEquals('English Title', $content->get('title'));
+    }
+
+    /** @test */
+    public function it_does_not_fallback_when_disabled()
+    {
+        config(['content.locale.fallback' => false]);
+        config(['content.locale.default' => 'en']);
+
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'en',
+            'type' => 'text',
+            'value' => 'English Title',
+        ]);
+
+        Route::shouldReceive('currentRouteName')
+            ->andReturn('test.page');
+
+        // Request content in French (not available), should not fallback
+        $content = get_content('fr', resetCache: true);
+
+        $this->assertNull($content->get('title'));
+    }
+
+    /** @test */
+    public function it_uses_default_locale_when_no_locale_specified()
+    {
+        config(['content.locale.default' => 'en']);
+
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'en',
+            'type' => 'text',
+            'value' => 'Default Title',
+        ]);
+
+        Route::shouldReceive('currentRouteName')
+            ->andReturn('test.page');
+
+        $content = get_content(resetCache: true);
+
+        $this->assertEquals('Default Title', $content->get('title'));
+    }
+
+    /** @test */
+    public function it_caches_content_separately_per_locale()
+    {
+        config(['content.cache.enabled' => true]);
+
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'en',
+            'type' => 'text',
+            'value' => 'English Title',
+        ]);
+
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'nl',
+            'type' => 'text',
+            'value' => 'Nederlandse Titel',
+        ]);
+
+        Route::shouldReceive('currentRouteName')
+            ->andReturn('test.page');
+
+        // Get content for both locales
+        $contentEn = get_content('en', resetCache: true);
+        $contentNl = get_content('nl', resetCache: true);
+
+        // Verify they are cached separately
+        $this->assertEquals('English Title', $contentEn->get('title'));
+        $this->assertEquals('Nederlandse Titel', $contentNl->get('title'));
     }
 }

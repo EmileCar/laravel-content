@@ -15,6 +15,7 @@ class ClearContentCommand extends Command
      */
     protected $signature = 'content:clear
                             {--page= : Clear content for a specific page only}
+                            {--locale= : Clear content for a specific locale only}
                             {--force : Skip confirmation prompt}';
 
     /**
@@ -30,9 +31,10 @@ class ClearContentCommand extends Command
     public function handle()
     {
         $pageId = $this->option('page');
+        $locale = $this->option('locale');
 
-        if ($pageId) {
-            return $this->clearPageContent($pageId);
+        if ($pageId || $locale) {
+            return $this->clearFilteredContent($pageId, $locale);
         }
 
         return $this->clearAllContent();
@@ -58,37 +60,54 @@ class ClearContentCommand extends Command
             return Command::SUCCESS;
         }
 
-        // Get all unique page IDs before deleting
-        $pageIds = PageContent::select('page_id')->distinct()->pluck('page_id');
+        // Get all unique page IDs and locales before deleting
+        $items = PageContent::select('page_id', 'locale')->distinct()->get();
 
         // Delete all content
         PageContent::truncate();
 
         // Clear all caches
-        foreach ($pageIds as $pageId) {
-            $this->clearCache($pageId);
+        foreach ($items as $item) {
+            $this->clearCache($item->page_id, $item->locale);
         }
 
         $this->newLine();
         $this->info("✅ Successfully deleted {$count} content entries!");
-        $this->info('✅ Cache cleared for all pages.');
+        $this->info('✅ Cache cleared for all pages and locales.');
 
         return Command::SUCCESS;
     }
 
     /**
-     * Clear content for a specific page
+     * Clear filtered content
      */
-    protected function clearPageContent($pageId)
+    protected function clearFilteredContent($pageId = null, $locale = null)
     {
-        $count = PageContent::where('page_id', $pageId)->count();
+        $query = PageContent::query();
+
+        if ($pageId) {
+            $query->where('page_id', $pageId);
+        }
+
+        if ($locale) {
+            $query->where('locale', $locale);
+        }
+
+        $count = $query->count();
 
         if ($count === 0) {
-            $this->info("No content found for page '{$pageId}'.");
+            $filters = [];
+            if ($pageId) $filters[] = "page '{$pageId}'";
+            if ($locale) $filters[] = "locale '{$locale}'";
+            $this->info("No content found for " . implode(' and ', $filters) . ".");
             return Command::SUCCESS;
         }
 
-        $this->warn("⚠️  This will delete {$count} content entries for page '{$pageId}'!");
+        $filters = [];
+        if ($pageId) $filters[] = "page '{$pageId}'";
+        if ($locale) $filters[] = "locale '{$locale}'";
+
+        $this->warn("⚠️  This will delete {$count} content entries for " . implode(' and ', $filters) . "!");
         $this->newLine();
 
         if (!$this->option('force') && !$this->confirm('Are you sure you want to continue?', false)) {
@@ -97,38 +116,58 @@ class ClearContentCommand extends Command
         }
 
         // Show what will be deleted
-        $contents = PageContent::where('page_id', $pageId)->get();
-        
+        $contents = $query->get();
+
         $this->table(
-            ['Element ID', 'Type', 'Value'],
+            ['Element ID', 'Locale', 'Type', 'Value'],
             $contents->map(fn($c) => [
                 $c->element_id,
+                $c->locale,
                 $c->type,
                 $this->truncate($c->value)
             ])
         );
 
+        // Get unique page/locale combinations before deleting
+        $items = $contents->unique(function ($item) {
+            return $item->page_id . '-' . $item->locale;
+        });
+
         // Delete content
-        PageContent::where('page_id', $pageId)->delete();
+        $query->delete();
 
         // Clear cache
-        $this->clearCache($pageId);
+        foreach ($items as $item) {
+            $this->clearCache($item->page_id, $item->locale);
+        }
 
         $this->newLine();
-        $this->info("✅ Successfully deleted {$count} content entries for page '{$pageId}'!");
+        $filterText = implode(' and ', $filters);
+        $this->info("✅ Successfully deleted {$count} content entries for {$filterText}!");
         $this->info('✅ Cache cleared.');
 
         return Command::SUCCESS;
     }
 
     /**
-     * Clear cache for page
+     * Clear cache for page and locale
      */
-    protected function clearCache($pageId)
+    protected function clearCache($pageId, $locale = null)
     {
-        if (config('content.cache.enabled', true)) {
-            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId;
+        if (!config('content.cache.enabled', true)) {
+            return;
+        }
+
+        if ($locale) {
+            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId . '_' . $locale;
             Cache::forget($cacheKey);
+        } else {
+            // Clear for all locales
+            $locales = array_keys(config('content.locale.available', ['en' => 'English']));
+            foreach ($locales as $loc) {
+                $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId . '_' . $loc;
+                Cache::forget($cacheKey);
+            }
         }
     }
 
@@ -137,8 +176,8 @@ class ClearContentCommand extends Command
      */
     protected function truncate($value, $length = 50)
     {
-        return strlen($value) > $length 
-            ? substr($value, 0, $length) . '...' 
+        return strlen($value) > $length
+            ? substr($value, 0, $length) . '...'
             : $value;
     }
 }

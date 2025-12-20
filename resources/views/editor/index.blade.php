@@ -25,7 +25,6 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
-            gap: 2rem;
             justify-content: space-between;
         }
 
@@ -33,6 +32,53 @@
             font-size: 1.5rem;
             font-weight: 600;
             color: #1a202c;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .locale-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .locale-selector label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .locale-selector select {
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .locale-selector select:hover {
+            border-color: #cbd5e0;
+        }
+
+        .locale-selector select:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
+        .locale-indicator {
+            padding: 0.375rem 0.75rem;
+            background: #ebf8ff;
+            color: #2c5282;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
         }
 
         .container {
@@ -565,8 +611,33 @@
             <img src="https://emilecaron.be/assets/LOGO_CARONE_main.png" alt="Carone Logo" style="height: 46px; vertical-align: middle;">
             <a href="https://github.com/EmileCar/laravel-content" target="_blank" style="text-decoration: none; color: #007bed; font-weight: bold; font-size: 1.2rem;transition: text-decoration 0.2s;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Content Editor</a>
         </h1>
-        <a href="{{ config('app.url') }}" target="_blank" style="text-decoration: none; color: #3182ce; font-weight: 500; font-style: italic; transition: text-decoration 0.2s;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-            {{ config('app.name', 'Visit app ->') }}
+
+        <div class="header-right">
+            @if(count($locales) > 1)
+            <div class="locale-selector">
+                <label for="localeSelect">🌐 Language:</label>
+                <select id="localeSelect" onchange="changeLocale(this.value)">
+                    @foreach($locales as $code => $name)
+                        <option value="{{ $code }}" {{ $code === $defaultLocale ? 'selected' : '' }}>
+                            {{ $name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @else
+            @php
+                $currentLocaleCode = $defaultLocale ?: 'en';
+                $localeName = isset($locales[$currentLocaleCode]) ? $locales[$currentLocaleCode] : $currentLocaleCode;
+            @endphp
+            <div class="locale-indicator">
+                🌐 {{ $localeName }}
+            </div>
+            @endif
+
+            <a href="{{ config('app.url') }}" target="_blank" style="text-decoration: none; color: #3182ce; font-weight: 500; font-style: italic; transition: text-decoration 0.2s;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                {{ config('app.name', 'Visit app ->') }}
+            </a>
+        </div>
         </a>
     </div>
 
@@ -688,6 +759,15 @@
         let temporaryPages = new Set(); // Track pages added via quick-add (not yet persisted)
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const apiBaseUrl = '/api/{{ config("content.route_prefix", "admin/content") }}';
+        let currentLocale = '{{ $defaultLocale }}'; // Track selected locale
+
+        // Change locale and reload current page
+        function changeLocale(locale) {
+            currentLocale = locale;
+            if (currentPage) {
+                loadPage(currentPage);
+            }
+        }
 
         // Validate page ID
         function isValidPageId(pageId) {
@@ -734,7 +814,7 @@
             `;
 
             // Fetch page content
-            fetch(`${apiBaseUrl}/page/${pageId}`, {
+            fetch(`${apiBaseUrl}/page/${pageId}?locale=${currentLocale}`, {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
@@ -886,8 +966,10 @@
                 page_id: document.getElementById('pageId').value,
                 element_id: document.getElementById('elementId').value,
                 type: document.getElementById('contentType').value,
-                value: document.getElementById('contentValue').value
+                value: document.getElementById('contentValue').value,
+                locale: currentLocale
             };
+
 
             fetch(`${apiBaseUrl}/content`, {
                 method: 'POST',
@@ -926,7 +1008,7 @@
             const pageId = pageItem ? pageItem.dataset.page : currentPage;
 
             // Find the content to get element_id and type
-            fetch(`${apiBaseUrl}/page/${pageId}`, {
+            fetch(`${apiBaseUrl}/page/${pageId}?locale=${currentLocale}`, {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
@@ -947,7 +1029,8 @@
                             page_id: pageId,
                             element_id: content.element_id,
                             type: content.type,
-                            value: value
+                            value: value,
+                            locale: currentLocale
                         })
                     });
                 }
@@ -1242,7 +1325,7 @@
             `;
 
             // Load page content from server
-            fetch(`${apiBaseUrl}/page/${pageId}`, {
+            fetch(`${apiBaseUrl}/page/${pageId}?locale=${currentLocale}`, {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
@@ -1270,7 +1353,8 @@
                 page_id: document.getElementById('pageId').value,
                 element_id: document.getElementById('elementId').value,
                 type: document.getElementById('contentType').value,
-                value: document.getElementById('contentValue').value
+                value: document.getElementById('contentValue').value,
+                locale: currentLocale
             };
 
             fetch(`${apiBaseUrl}/content`, {

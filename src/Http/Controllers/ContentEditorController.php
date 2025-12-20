@@ -3,6 +3,7 @@
 namespace Carone\Content\Http\Controllers;
 
 use Carone\Content\Models\PageContent;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
@@ -15,8 +16,15 @@ class ContentEditorController
      */
     public function index()
     {
+        $driver = DB::connection()->getDriverName();
+
+        $distinctExpression = match ($driver) {
+            'sqlite' => 'element_id || "-" || locale',
+            default  => 'CONCAT(element_id, "-", locale)',
+        };
+
         $pages = PageContent::select('page_id')
-            ->selectRaw('COUNT(DISTINCT CONCAT(element_id, "-", locale)) as content_count')
+            ->selectRaw("COUNT(DISTINCT {$distinctExpression}) as content_count")
             ->groupBy('page_id')
             ->get()
             ->map(function ($page) {
@@ -26,27 +34,25 @@ class ContentEditorController
                 ];
             });
 
-        $availableLocales = config('content.locale.available', ['en' => 'English']);
+        $locales = config('content.locale.enabled', true)
+            ? config('content.locale.available', ['en' => 'English'])
+            : ['en' => 'English'];
+        $defaultLocale = config('content.locale.default', 'en');
 
-        return view('laravel-content::editor.index', compact('pages', 'availableLocales'));
+        return view('laravel-content::editor.index', compact('pages', 'locales', 'defaultLocale'));
     }
 
     /**
-     * Get content for a specific page (optionally filtered by locale)
+     * Get content for a specific page and locale
      */
-    public function getPageContent(Request $request, $pageId)
+    public function getPageContent($pageId, Request $request)
     {
-        $locale = $request->get('locale');
+        $locale = $request->input('locale', config('content.locale.default', 'en'));
 
-        $query = PageContent::where('page_id', $pageId)
+        $contents = PageContent::where('page_id', $pageId)
+            ->where('locale', $locale)
             ->orderBy('element_id')
-            ->orderBy('locale');
-
-        if ($locale) {
-            $query->where('locale', $locale);
-        }
-
-        $contents = $query->get();
+            ->get();
 
         return response()->json([
             'page_id' => $pageId,
@@ -95,8 +101,8 @@ class ContentEditorController
             ]
         );
 
-        // Clear cache for this page and locale
-        $this->clearPageCache($request->input('page_id'), $request->input('locale'));
+        // Clear cache for this page
+        $this->clearPageCache($request->page_id);
 
         return response()->json([
             'success' => true,
@@ -112,12 +118,11 @@ class ContentEditorController
     {
         $content = PageContent::findOrFail($id);
         $pageId = $content->page_id;
-        $locale = $content->locale;
 
         $content->delete();
 
-        // Clear cache for this page and locale
-        $this->clearPageCache($pageId, $locale);
+        // Clear cache for this page
+        $this->clearPageCache($pageId);
 
         return response()->json([
             'success' => true,
@@ -126,7 +131,7 @@ class ContentEditorController
     }
 
     /**
-     * Delete an entire page with all its content (all locales)
+     * Delete an entire page with all its content
      */
     public function destroyPage($pageId)
     {
@@ -141,8 +146,8 @@ class ContentEditorController
 
         PageContent::where('page_id', $pageId)->delete();
 
-        // Clear cache for this page (all locales)
-        $this->clearPageCacheAllLocales($pageId);
+        // Clear cache for this page
+        $this->clearPageCache($pageId);
 
         return response()->json([
             'success' => true,
@@ -151,31 +156,12 @@ class ContentEditorController
     }
 
     /**
-     * Clear cache for a specific page and locale
+     * Clear cache for a specific page
      */
-    protected function clearPageCache($pageId, $locale = null)
+    protected function clearPageCache($pageId)
     {
-        if (!config('content.cache.enabled', true)) {
-            return;
-        }
-
-        $locale = $locale ?? PageContent::getDefaultLocale();
-        $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId . '_' . $locale;
-        Cache::forget($cacheKey);
-    }
-
-    /**
-     * Clear cache for a page across all locales
-     */
-    protected function clearPageCacheAllLocales($pageId)
-    {
-        if (!config('content.cache.enabled', true)) {
-            return;
-        }
-
-        $locales = array_keys(config('content.locale.available', ['en' => 'English']));
-        foreach ($locales as $locale) {
-            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId . '_' . $locale;
+        if (config('content.cache.enabled', true)) {
+            $cacheKey = config('content.cache.key_prefix', 'laravel_content_') . $pageId;
             Cache::forget($cacheKey);
         }
     }

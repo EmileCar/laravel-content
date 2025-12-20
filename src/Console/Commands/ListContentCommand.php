@@ -14,6 +14,7 @@ class ListContentCommand extends Command
      */
     protected $signature = 'content:list
                             {--page= : Show content for a specific page only}
+                            {--locale= : Filter by locale}
                             {--type= : Filter by content type (text, image, file)}
                             {--full : Show full values without truncation}';
 
@@ -36,11 +37,15 @@ class ListContentCommand extends Command
             $query->where('page_id', $page);
         }
 
+        if ($locale = $this->option('locale')) {
+            $query->where('locale', $locale);
+        }
+
         if ($type = $this->option('type')) {
             $query->where('type', $type);
         }
 
-        $contents = $query->orderBy('page_id')->orderBy('element_id')->get();
+        $contents = $query->orderBy('page_id')->orderBy('locale')->orderBy('element_id')->get();
 
         if ($contents->isEmpty()) {
             $this->warn('No content found.');
@@ -73,17 +78,18 @@ class ListContentCommand extends Command
         foreach ($pages as $pageId => $pageContents) {
             $this->comment("Page: {$pageId} ({$pageContents->count()} items)");
             $this->line(str_repeat('─', 80));
-            
+
             $this->table(
-                ['ID', 'Element ID', 'Type', 'Value'],
+                ['ID', 'Element ID', 'Locale', 'Type', 'Value'],
                 $pageContents->map(fn($c) => [
                     $c->id,
                     $c->element_id,
+                    $c->locale,
                     $this->coloredType($c->type),
                     $this->formatValue($c->value)
                 ])
             );
-            
+
             $this->newLine();
         }
     }
@@ -94,11 +100,12 @@ class ListContentCommand extends Command
     protected function displayTable($contents)
     {
         $this->table(
-            ['ID', 'Page ID', 'Element ID', 'Type', 'Value'],
+            ['ID', 'Page ID', 'Element ID', 'Locale', 'Type', 'Value'],
             $contents->map(fn($c) => [
                 $c->id,
                 $c->page_id,
                 $c->element_id,
+                $c->locale,
                 $this->coloredType($c->type),
                 $this->formatValue($c->value)
             ])
@@ -115,7 +122,7 @@ class ListContentCommand extends Command
         }
 
         $maxLength = 60;
-        
+
         if (strlen($value) > $maxLength) {
             return substr($value, 0, $maxLength) . '...';
         }
@@ -135,7 +142,7 @@ class ListContentCommand extends Command
         ];
 
         $color = $colors[$type] ?? 'info';
-        
+
         return "<fg={$color}>{$type}</>";
     }
 }

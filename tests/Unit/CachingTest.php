@@ -15,7 +15,7 @@ class CachingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Ensure cache is completely clear before each test
         Cache::flush();
     }
@@ -24,7 +24,7 @@ class CachingTest extends TestCase
     {
         // Clear cache after each test
         Cache::flush();
-        
+
         parent::tearDown();
     }
 
@@ -33,10 +33,12 @@ class CachingTest extends TestCase
     {
         config(['content.cache.enabled' => true]);
         config(['content.cache.ttl' => 3600]);
+        config(['content.locale.default' => 'en']);
 
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Cached Title',
         ]);
@@ -49,7 +51,7 @@ class CachingTest extends TestCase
         $this->assertEquals('Cached Title', $content1->get('title'));
 
         // Verify it's in cache
-        $cacheKey = config('content.cache.key_prefix') . 'test.page';
+        $cacheKey = config('content.cache.key_prefix') . 'test.page_en';
         $this->assertTrue(Cache::has($cacheKey));
 
         // Second call should use cached version
@@ -61,10 +63,12 @@ class CachingTest extends TestCase
     public function it_does_not_cache_when_caching_is_disabled()
     {
         config(['content.cache.enabled' => false]);
+        config(['content.locale.default' => 'en']);
 
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Uncached Title',
         ]);
@@ -76,7 +80,7 @@ class CachingTest extends TestCase
         $this->assertEquals('Uncached Title', $content->get('title'));
 
         // Verify it's not in cache
-        $cacheKey = config('content.cache.key_prefix') . 'test.page';
+        $cacheKey = config('content.cache.key_prefix') . 'test.page_en';
         $this->assertFalse(Cache::has($cacheKey));
     }
 
@@ -85,10 +89,12 @@ class CachingTest extends TestCase
     {
         config(['content.cache.enabled' => true]);
         config(['content.cache.ttl' => 7200]); // 2 hours
+        config(['content.locale.default' => 'en']);
 
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Test Title',
         ]);
@@ -98,7 +104,7 @@ class CachingTest extends TestCase
 
         get_content(resetCache: true);
 
-        $cacheKey = config('content.cache.key_prefix') . 'test.page';
+        $cacheKey = config('content.cache.key_prefix') . 'test.page_en';
         $this->assertTrue(Cache::has($cacheKey));
     }
 
@@ -107,10 +113,12 @@ class CachingTest extends TestCase
     {
         config(['content.cache.enabled' => true]);
         config(['content.cache.key_prefix' => 'custom_prefix_']);
+        config(['content.locale.default' => 'en']);
 
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Test Title',
         ]);
@@ -120,7 +128,7 @@ class CachingTest extends TestCase
 
         get_content(resetCache: true);
 
-        $this->assertTrue(Cache::has('custom_prefix_test.page'));
+        $this->assertTrue(Cache::has('custom_prefix_test.page_en'));
     }
 
     /** @test */
@@ -131,6 +139,7 @@ class CachingTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Test Title',
         ]);
@@ -140,10 +149,10 @@ class CachingTest extends TestCase
 
         // First call
         $content1 = get_content(resetCache: true);
-        
+
         // Second call in same request should use static cache
         $content2 = get_content();
-        
+
         // Both should return the same collection instance
         $this->assertSame($content1, $content2);
     }

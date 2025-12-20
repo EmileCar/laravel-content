@@ -26,6 +26,7 @@ class EditableFileComponentTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'contract',
+            'locale' => 'en',
             'type' => 'file',
             'value' => 'files/contract.pdf',
         ]);
@@ -164,7 +165,7 @@ class EditableFileComponentTest extends TestCase
 
         foreach ($fileTypes as $type => $path) {
             clear_static_content_cache();
-            
+
             $component = new EditableFile("file-{$type}");
             $view = $component->render();
 

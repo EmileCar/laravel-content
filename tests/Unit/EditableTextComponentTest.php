@@ -26,6 +26,7 @@ class EditableTextComponentTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'test-element',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Database Content',
         ]);
@@ -109,6 +110,7 @@ class EditableTextComponentTest extends TestCase
         PageContent::create([
             'page_id' => 'test.page',
             'element_id' => 'multiline',
+            'locale' => 'en',
             'type' => 'text',
             'value' => $multilineText,
         ]);
@@ -120,6 +122,38 @@ class EditableTextComponentTest extends TestCase
         $view = $component->render();
 
         $this->assertEquals($multilineText, $view->getData()['value']);
+    }
+
+    /** @test */
+    public function it_renders_content_for_specific_locale()
+    {
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'en',
+            'type' => 'text',
+            'value' => 'English Title',
+        ]);
+
+        PageContent::create([
+            'page_id' => 'test.page',
+            'element_id' => 'title',
+            'locale' => 'nl',
+            'type' => 'text',
+            'value' => 'Nederlandse Titel',
+        ]);
+
+        Route::shouldReceive('currentRouteName')
+            ->andReturn('test.page');
+
+        $componentEn = new EditableText('title', 'en');
+        $componentNl = new EditableText('title', 'nl');
+
+        $viewEn = $componentEn->render();
+        $viewNl = $componentNl->render();
+
+        $this->assertEquals('English Title', $viewEn->getData()['value']);
+        $this->assertEquals('Nederlandse Titel', $viewNl->getData()['value']);
     }
 }
 

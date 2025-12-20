@@ -35,6 +35,7 @@ class IntegrationTest extends TestCase
         PageContent::create([
             'page_id' => 'home',
             'element_id' => 'welcome-text',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Welcome to our website!',
         ]);
@@ -56,6 +57,7 @@ class IntegrationTest extends TestCase
         PageContent::create([
             'page_id' => 'about',
             'element_id' => 'team-photo',
+            'locale' => 'en',
             'type' => 'image',
             'value' => 'images/team.jpg',
         ]);
@@ -76,6 +78,7 @@ class IntegrationTest extends TestCase
         PageContent::create([
             'page_id' => 'home',
             'element_id' => 'title',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Main Title',
         ]);
@@ -83,6 +86,7 @@ class IntegrationTest extends TestCase
         PageContent::create([
             'page_id' => 'home',
             'element_id' => 'subtitle',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Subtitle Text',
         ]);
@@ -90,6 +94,7 @@ class IntegrationTest extends TestCase
         PageContent::create([
             'page_id' => 'home',
             'element_id' => 'logo',
+            'locale' => 'en',
             'type' => 'image',
             'value' => 'images/logo.png',
         ]);
@@ -97,6 +102,7 @@ class IntegrationTest extends TestCase
         PageContent::create([
             'page_id' => 'home',
             'element_id' => 'brochure',
+            'locale' => 'en',
             'type' => 'file',
             'value' => 'files/brochure.pdf',
         ]);
@@ -124,6 +130,7 @@ class IntegrationTest extends TestCase
         $content = PageContent::create([
             'page_id' => 'home',
             'element_id' => 'dynamic-text',
+            'locale' => 'en',
             'type' => 'text',
             'value' => 'Original Text',
         ]);
@@ -144,7 +151,7 @@ class IntegrationTest extends TestCase
         // Check updated value
         $component2 = new EditableText('dynamic-text');
         $view = $component2->render();
-        
+
         // Note: This test may fail due to static caching in the helper
         // In production, cache invalidation would be handled separately
     }
@@ -154,7 +161,7 @@ class IntegrationTest extends TestCase
     {
         $user = new \Illuminate\Foundation\Auth\User();
         $user->id = 1;
-        
+
         $this->actingAs($user);
 
         Route::shouldReceive('currentRouteName')

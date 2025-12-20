@@ -3,6 +3,7 @@
 namespace Carone\Content\Http\Controllers;
 
 use Carone\Content\Models\PageContent;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
@@ -15,8 +16,15 @@ class ContentEditorController
      */
     public function index()
     {
+        $driver = DB::connection()->getDriverName();
+
+        $distinctExpression = match ($driver) {
+            'sqlite' => 'element_id || "-" || locale',
+            default  => 'CONCAT(element_id, "-", locale)',
+        };
+
         $pages = PageContent::select('page_id')
-            ->selectRaw('COUNT(*) as content_count')
+            ->selectRaw("COUNT(DISTINCT {$distinctExpression}) as content_count")
             ->groupBy('page_id')
             ->get()
             ->map(function ($page) {
@@ -26,20 +34,29 @@ class ContentEditorController
                 ];
             });
 
-        return view('laravel-content::editor.index', compact('pages'));
+        $locales = config('content.locale.enabled', true)
+            ? config('content.locale.available', ['en' => 'English'])
+            : ['en' => 'English'];
+        $defaultLocale = config('content.locale.default', 'en');
+
+        return view('laravel-content::editor.index', compact('pages', 'locales', 'defaultLocale'));
     }
 
     /**
-     * Get content for a specific page
+     * Get content for a specific page and locale
      */
-    public function getPageContent($pageId)
+    public function getPageContent($pageId, Request $request)
     {
+        $locale = $request->input('locale', config('content.locale.default', 'en'));
+
         $contents = PageContent::where('page_id', $pageId)
+            ->where('locale', $locale)
             ->orderBy('element_id')
             ->get();
 
         return response()->json([
             'page_id' => $pageId,
+            'locale' => $locale,
             'contents' => $contents
         ]);
     }
@@ -63,6 +80,7 @@ class ContentEditorController
                 },
             ],
             'element_id' => 'required|string|max:255',
+            'locale' => 'required|string|max:10',
             'type' => 'required|in:' . implode(',', config('content.content_types', ['text', 'image', 'file'])),
             'value' => 'nullable|string',
         ]);
@@ -73,12 +91,13 @@ class ContentEditorController
 
         $content = PageContent::updateOrCreate(
             [
-                'page_id' => $request->page_id,
-                'element_id' => $request->element_id,
+                'page_id' => $request->input('page_id'),
+                'element_id' => $request->input('element_id'),
+                'locale' => $request->input('locale'),
             ],
             [
-                'type' => $request->type,
-                'value' => $request->value,
+                'type' => $request->input('type'),
+                'value' => $request->input('value'),
             ]
         );
 
@@ -99,9 +118,9 @@ class ContentEditorController
     {
         $content = PageContent::findOrFail($id);
         $pageId = $content->page_id;
-        
+
         $content->delete();
-        
+
         // Clear cache for this page
         $this->clearPageCache($pageId);
 
@@ -117,7 +136,7 @@ class ContentEditorController
     public function destroyPage($pageId)
     {
         $count = PageContent::where('page_id', $pageId)->count();
-        
+
         if ($count === 0) {
             return response()->json([
                 'success' => false,
@@ -126,7 +145,7 @@ class ContentEditorController
         }
 
         PageContent::where('page_id', $pageId)->delete();
-        
+
         // Clear cache for this page
         $this->clearPageCache($pageId);
 
@@ -174,8 +193,8 @@ class ContentEditorController
 
             // Exclude development/debugging routes
             $excludePatterns = [
-                '_debugbar', 'debugbar', 'telescope', 'horizon', 
-                'ignition', 'livewire', 'nova', 'pulse', 
+                '_debugbar', 'debugbar', 'telescope', 'horizon',
+                'ignition', 'livewire', 'nova', 'pulse',
                 '_ignition', 'sanctum', 'broadcasting'
             ];
 

@@ -25,11 +25,16 @@ if (!function_exists('get_content')) {
 
         if ($resetCache) $cachedContents = [];
 
-        $currentPage = Route::currentRouteName();
+        $currentPage = Route::currentRouteName() ?? '';
         $cacheIdentifier = $currentPage . '_' . $locale;
 
         if (isset($cachedContents[$cacheIdentifier])) {
             return $cachedContents[$cacheIdentifier];
+        }
+
+        // Return empty collection if no page context
+        if (empty($currentPage)) {
+            return collect();
         }
 
         // Secondary cache using Laravel's cache system if enabled

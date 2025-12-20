@@ -24,7 +24,9 @@ class PageContent extends Model
      */
     public static function getDefaultLocale(): string
     {
-        return config('content.locale.default', config('app.locale', 'en'));
+        return config('content.locale.default')
+            ?: config('app.locale')
+            ?: 'en';
     }
 
     /**

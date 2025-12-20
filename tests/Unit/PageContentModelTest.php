@@ -265,7 +265,7 @@ class PageContentModelTest extends TestCase
     /** @test */
     public function it_uses_app_locale_as_fallback_for_default_locale()
     {
-        config(['content.locale.default' => null]);
+        config(['content.locale.default' => '']);
         config(['app.locale' => 'fr']);
 
         $defaultLocale = PageContent::getDefaultLocale();

@@ -1,6 +1,6 @@
 {
     "name": "carone/laravel-content",
-    "version": "1.2",
+    "version": "1.0",
     "description": "A light-weight CMS for Laravel projects",
     "keywords": ["laravel", "cms", "content-management", "api"],
     "type": "library",

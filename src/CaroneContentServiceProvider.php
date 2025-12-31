@@ -4,8 +4,6 @@ namespace Carone\Content;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
-use Carone\Content\Services\ContentService;
-use Carone\Content\Services\JsonSchemaValidator;
 
 class CaroneContentServiceProvider extends ServiceProvider
 {

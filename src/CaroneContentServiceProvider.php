@@ -2,6 +2,7 @@
 
 namespace Carone\Content;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Carone\Content\Services\ContentService;
@@ -76,11 +77,9 @@ class CaroneContentServiceProvider extends ServiceProvider
 
     protected function registerBladeComponents()
     {
-        $this->loadViewComponentsAs('editable', [
-            \Carone\Content\View\Components\EditableText::class,
-            \Carone\Content\View\Components\EditableImage::class,
-            \Carone\Content\View\Components\EditableFile::class,
-        ]);
+        Blade::component('editable-text', \Carone\Content\View\Components\EditableText::class);
+        Blade::component('editable-image', \Carone\Content\View\Components\EditableImage::class);
+        Blade::component('editable-file', \Carone\Content\View\Components\EditableFile::class);
     }
 
     protected function registerCommands()

@@ -112,6 +112,51 @@ class ContentEditorController
     }
 
     /**
+     * Update content element_id
+     */
+    public function updateElementId(Request $request, $id)
+    {
+        $content = PageContent::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'element_id' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z0-9][a-zA-Z0-9\-_.]*$/',
+                // Check uniqueness for this page, locale combination
+                function ($attribute, $value, $fail) use ($content) {
+                    $exists = PageContent::where('page_id', $content->page_id)
+                        ->where('locale', $content->locale)
+                        ->where('element_id', $value)
+                        ->where('id', '!=', $content->id)
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('An element with this ID already exists on this page.');
+                    }
+                },
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $content->element_id = $request->input('element_id');
+        $content->save();
+
+        // Clear cache for this page
+        $this->clearPageCache($content->page_id);
+
+        return response()->json([
+            'success' => true,
+            'content' => $content,
+            'message' => 'Element ID updated successfully'
+        ]);
+    }
+
+    /**
      * Delete content
      */
     public function destroy($id)
@@ -171,7 +216,9 @@ class ContentEditorController
      */
     public function getWebRoutes()
     {
-        $routes = collect(Route::getRoutes())->filter(function ($route) {
+        $configExclusions = config('content.route_exclusions', []);
+
+        $routes = collect(Route::getRoutes())->filter(function ($route) use ($configExclusions) {
             $uri = $route->uri();
             $name = $route->getName();
             $methods = $route->methods();
@@ -208,6 +255,13 @@ class ContentEditorController
             $editorPrefix = config('content.route_prefix', 'admin/content');
             if (str_starts_with($uri, $editorPrefix)) {
                 return false;
+            }
+
+            // Exclude custom configured patterns
+            foreach ($configExclusions as $exclusion) {
+                if (stripos($uri, $exclusion) !== false || ($name && stripos($name, $exclusion) !== false)) {
+                    return false;
+                }
             }
 
             return true;

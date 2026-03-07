@@ -339,6 +339,48 @@
             background: #e2e8f0;
         }
 
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #dd6b20;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .element-id-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .element-id-edit {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .element-id-input {
+            flex: 1;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .element-id-input:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -901,9 +943,17 @@
             return `
                 <div class="content-card">
                     <div class="content-card-header">
+                        <div class="element-id-header">
+                            <div id="element-display-${content.id}" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <strong>${content.element_id}</strong>
+                                <span class="content-type-badge ${content.type}">${content.type}</span>
+                            </div>
+                            <div id="element-edit-${content.id}" class="element-id-edit" style="display: none;">
+                                <input type="text" class="element-id-input" id="element-input-${content.id}" value="${content.element_id}" />
+                            </div>
+                        </div>
                         <div>
-                            <strong>${content.element_id}</strong>
-                            <span class="content-type-badge ${content.type}">${content.type}</span>
+                            <button class="btn btn-warning btn-sm" id="edit-btn-${content.id}" onclick="toggleEditElement(${content.id})">Edit ID</button>
                         </div>
                     </div>
                     <div class="content-card-body">
@@ -1079,6 +1129,77 @@
                 console.error('Error:', error);
                 alert('Error deleting content');
             });
+        }
+
+        function toggleEditElement(contentId) {
+            const displayDiv = document.getElementById(`element-display-${contentId}`);
+            const editDiv = document.getElementById(`element-edit-${contentId}`);
+            const editBtn = document.getElementById(`edit-btn-${contentId}`);
+            const input = document.getElementById(`element-input-${contentId}`);
+
+            if (editDiv.style.display === 'none') {
+                // Switch to edit mode
+                displayDiv.style.display = 'none';
+                editDiv.style.display = 'flex';
+                editBtn.textContent = 'Save ID';
+                editBtn.classList.remove('btn-warning');
+                editBtn.classList.add('btn-primary');
+                input.focus();
+            } else {
+                // Save the new element_id
+                const newElementId = input.value.trim();
+
+                if (!newElementId) {
+                    alert('Element ID cannot be empty');
+                    return;
+                }
+
+                // Validate element_id format
+                if (!/^[a-zA-Z0-9][a-zA-Z0-9\-_.]*$/.test(newElementId)) {
+                    alert('Element ID must start with alphanumeric and can only contain letters, numbers, hyphens, underscores, and dots');
+                    return;
+                }
+
+                editBtn.disabled = true;
+                editBtn.textContent = 'Saving...';
+
+                fetch(`${apiBaseUrl}/content/${contentId}/element`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        element_id: newElementId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Reload the page content to reflect changes
+                        loadPage(currentPage);
+                    } else if (data.errors) {
+                        let errorMessage = 'Validation errors:\n';
+                        for (const [field, messages] of Object.entries(data.errors)) {
+                            errorMessage += `\n${field}: ${messages.join(', ')}`;
+                        }
+                        alert(errorMessage);
+                        editBtn.disabled = false;
+                        editBtn.textContent = 'Save ID';
+                    } else {
+                        alert('Error updating element ID');
+                        editBtn.disabled = false;
+                        editBtn.textContent = 'Save ID';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating element ID');
+                    editBtn.disabled = false;
+                    editBtn.textContent = 'Save ID';
+                });
+            }
         }
 
         function deletePage(pageId) {

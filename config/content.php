@@ -96,6 +96,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Route Exclusions
+    |--------------------------------------------------------------------------
+    |
+    | Patterns to exclude from the web routes list in the editor.
+    | Routes containing any of these strings will be excluded.
+    | For example, ['admin', 'dashboard'] will exclude all routes
+    | containing 'admin' or 'dashboard' in their URI or name.
+    |
+    */
+    'route_exclusions' => [
+        // Add patterns here, e.g., 'admin', 'dashboard'
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Content Types
     |--------------------------------------------------------------------------
     |
